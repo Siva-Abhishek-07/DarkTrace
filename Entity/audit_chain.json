@@ -89,5 +89,28 @@
     },
     "previous_hash": "e8707d73395fdb456f0f63f7b8decbdce9532734894254092c97d97a88adee3d",
     "hash": "c05b0785688b6904e454ad1cbc39b7eea9244ac56f57b97e36965e57c4722ca3"
+  },
+  {
+    "ledger_version": "2.1",
+    "index": 3,
+    "timestamp": "2026-09-10T16:52:02Z",
+    "event": "MULTI_ENTITY_ANALYSIS",
+    "data": {
+      "entityIds": [
+        "Q22906448",
+        "Q20757678"
+      ],
+      "entityCount": 2,
+      "pairCount": 1,
+      "pairScores": [
+        {
+          "entity1Id": "Q22906448",
+          "entity2Id": "Q20757678",
+          "score": 73
+        }
+      ]
+    },
+    "previous_hash": "c05b0785688b6904e454ad1cbc39b7eea9244ac56f57b97e36965e57c4722ca3",
+    "hash": "e9deb42892d8422d8be3852fbb14dd749bfaa90ce330b2c18616d3e2072ec96e"
   }
 ]

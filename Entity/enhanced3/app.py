@@ -41,7 +41,28 @@ app = Flask(__name__, static_folder=ROOT, static_url_path="")
 # ---------------------------------------------------------------------------
 from werkzeug.security import generate_password_hash, check_password_hash
 
-AUTH_DB = os.path.join(ROOT, "darktrace_users.db")
+import shutil
+import tempfile
+
+def _get_writable_path(filename: str) -> str:
+    target_in_root = os.path.join(ROOT, filename)
+    try:
+        test_file = os.path.join(ROOT, ".write_test")
+        with open(test_file, "w") as f:
+            f.write("test")
+        os.remove(test_file)
+        return target_in_root
+    except (OSError, PermissionError):
+        temp_dir = tempfile.gettempdir()
+        target_in_temp = os.path.join(temp_dir, filename)
+        if not os.path.exists(target_in_temp) and os.path.exists(target_in_root):
+            try:
+                shutil.copy2(target_in_root, target_in_temp)
+            except Exception:
+                pass
+        return target_in_temp
+
+AUTH_DB = _get_writable_path("darktrace_users.db")
 USERNAME_SUFFIX = "@darktrace.in"
 ADMIN_USERNAME = "admin@darktrace.in"
 # Password is intentionally stored only as a hash. Demo credential is provided separately.
@@ -260,7 +281,7 @@ CACHE: dict[str, tuple[float, Any]] = {}
 CACHE_LOCK = threading.Lock()
 CACHE_TTL = 1800
 
-LEDGER_FILE = os.path.join(ROOT, "audit_chain.json")
+LEDGER_FILE = _get_writable_path("audit_chain.json")
 LEDGER_LOCK = threading.Lock()
 MAX_ENTITIES = 30
 LEDGER_VERSION = "2.1"
