@@ -1,0 +1,46 @@
+{
+  "actors": [
+    {
+      "id": "ALPHA-17",
+      "type": "Account",
+      "source": "Auth telemetry",
+      "lastObserved": "2026-09-06 11:42",
+      "status": "Investigative Lead"
+    },
+    {
+      "id": "BRAVO-42",
+      "type": "Host",
+      "source": "EDR telemetry",
+      "lastObserved": "2026-09-06 11:37",
+      "status": "Observed"
+    },
+    {
+      "id": "CHARLIE-09",
+      "type": "Domain",
+      "source": "DNS records",
+      "lastObserved": "2026-09-06 10:58",
+      "status": "Observed"
+    }
+  ],
+
+  "relationships": [
+    {
+      "source": "ALPHA-17",
+      "target": "BRAVO-42",
+      "score": 94,
+      "evidence": "Shared session pattern and temporal overlap"
+    },
+    {
+      "source": "BRAVO-42",
+      "target": "CHARLIE-09",
+      "score": 88,
+      "evidence": "Repeated DNS resolution sequence"
+    },
+    {
+      "source": "ALPHA-17",
+      "target": "CHARLIE-09",
+      "score": 72,
+      "evidence": "Observed activity overlap"
+    }
+  ]
+}
