@@ -1,5 +1,177 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DarkTrace — Sign In</title><link rel="stylesheet" href="auth.css"></head>
-<body><div class="auth-shell"><div class="auth-card"><div class="brand"><div class="logo">⌁</div><div><strong>DarkTrace</strong><span>Threat Intelligence</span></div></div><div class="eyebrow">SECURE SIGN IN</div><h1>Welcome back</h1><p class="intro">Sign in to access your DarkTrace investigation dashboard.</p>
-<form id="form"><label>Username</label><div class="username-wrap"><input id="username" autocomplete="username" placeholder="yourname" required><span>@darktrace.in</span></div><small class="hint">The @darktrace.in suffix is added automatically.</small><label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required><button class="primary" id="btn" type="submit">Sign in</button><div id="msg" class="message" role="alert"></div></form>
-<div class="auth-links">New user? <a href="/signup">Create an account</a></div><div class="security-note">🔒 Secure password hashing · Duplicate usernames are blocked.</div></div></div>
-<script>const $=id=>document.getElementById(id);$('form').onsubmit=async e=>{e.preventDefault();$('btn').disabled=true;$('msg').textContent='Signing in…';$('msg').className='message';try{const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});const d=await r.json();if(!r.ok)throw Error(d.error||'Sign in failed');location.href=d.redirect||'/'}catch(err){$('msg').textContent=err.message;$('msg').className='message error'}finally{$('btn').disabled=false}};</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DarkTrace — Sign In</title>
+  <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="logo">⌁</div>
+        <div>
+          <strong>DarkTrace</strong>
+          <span>Threat Intelligence</span>
+        </div>
+      </div>
+
+      <div id="step-credentials">
+        <div class="eyebrow">SECURE SIGN IN</div>
+        <h1>Welcome back</h1>
+        <p class="intro">Sign in to access your DarkTrace investigation dashboard.</p>
+        <form id="form-login">
+          <label>Username</label>
+          <div class="username-wrap">
+            <input id="username" autocomplete="username" placeholder="yourname" required>
+            <span>@darktrace.in</span>
+          </div>
+          <small class="hint">The @darktrace.in suffix is added automatically.</small>
+          
+          <label>Password</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+          
+          <button class="primary" id="btn-login" type="submit">Sign in</button>
+          <div id="msg-login" class="message" role="alert"></div>
+        </form>
+        <div class="auth-links">New user? <a href="/signup">Create an account</a></div>
+      </div>
+
+      <div id="step-otp" class="hidden">
+        <div class="eyebrow">2-STEP VERIFICATION</div>
+        <h1>Enter OTP</h1>
+        <p class="intro">A temporary OTP code has been generated for your login request.</p>
+
+        <div id="otp-demo-banner" class="otp-banner">
+          <small>🔑 Temporary Security Code</small>
+          <div id="demo-otp-val" class="otp-code">------</div>
+          <div class="otp-subtext">Valid for 5 minutes</div>
+        </div>
+
+        <form id="form-otp">
+          <label>6-Digit Verification Code</label>
+          <input id="otp-code-input" class="otp-input" type="text" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000" required>
+
+          <button class="primary" id="btn-otp" type="submit">Verify OTP &amp; Sign In</button>
+          <div id="msg-otp" class="message" role="alert"></div>
+        </form>
+
+        <div class="auth-actions">
+          <button type="button" id="btn-resend">🔄 Resend OTP</button>
+          <button type="button" id="btn-back">← Back to Sign In</button>
+        </div>
+      </div>
+
+      <div class="security-note">🔒 Two-Factor OTP Security · Password hashing enabled</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    $('form-login').onsubmit = async e => {
+      e.preventDefault();
+      $('btn-login').disabled = true;
+      $('msg-login').textContent = 'Authenticating…';
+      $('msg-login').className = 'message';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: $('username').value.trim(),
+            password: $('password').value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw Error(data.error || 'Sign in failed');
+
+        if (data.otp_required) {
+          $('demo-otp-val').textContent = data.temp_otp || '------';
+          $('step-credentials').classList.add('hidden');
+          $('step-otp').classList.remove('hidden');
+          $('otp-code-input').value = '';
+          $('otp-code-input').focus();
+          $('msg-otp').textContent = data.message || 'OTP generated successfully.';
+          $('msg-otp').className = 'message success';
+        } else if (data.redirect) {
+          location.href = data.redirect;
+        }
+      } catch (err) {
+        $('msg-login').textContent = err.message;
+        $('msg-login').className = 'message error';
+      } finally {
+        $('btn-login').disabled = false;
+      }
+    };
+
+    $('form-otp').onsubmit = async e => {
+      e.preventDefault();
+      const code = $('otp-code-input').value.trim();
+      if (!code || code.length !== 6) {
+        $('msg-otp').textContent = 'Please enter a valid 6-digit OTP code.';
+        $('msg-otp').className = 'message error';
+        return;
+      }
+
+      $('btn-otp').disabled = true;
+      $('msg-otp').textContent = 'Verifying OTP…';
+      $('msg-otp').className = 'message';
+
+      try {
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (!res.ok) throw Error(data.error || 'OTP verification failed');
+
+        $('msg-otp').textContent = 'OTP verified! Redirecting…';
+        $('msg-otp').className = 'message success';
+        setTimeout(() => {
+          location.href = data.redirect || '/';
+        }, 400);
+      } catch (err) {
+        $('msg-otp').textContent = err.message;
+        $('msg-otp').className = 'message error';
+      } finally {
+        $('btn-otp').disabled = false;
+      }
+    };
+
+    $('btn-resend').onclick = async () => {
+      $('btn-resend').disabled = true;
+      $('msg-otp').textContent = 'Generating new OTP…';
+      $('msg-otp').className = 'message';
+
+      try {
+        const res = await fetch('/api/auth/resend-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw Error(data.error || 'Failed to resend OTP');
+
+        $('demo-otp-val').textContent = data.temp_otp || '------';
+        $('msg-otp').textContent = data.message || 'New OTP generated.';
+        $('msg-otp').className = 'message success';
+      } catch (err) {
+        $('msg-otp').textContent = err.message;
+        $('msg-otp').className = 'message error';
+      } finally {
+        $('btn-resend').disabled = false;
+      }
+    };
+
+    $('btn-back').onclick = () => {
+      $('step-otp').classList.add('hidden');
+      $('step-credentials').classList.remove('hidden');
+      $('msg-login').textContent = '';
+      $('msg-login').className = 'message';
+    };
+  </script>
+</body>
+</html>

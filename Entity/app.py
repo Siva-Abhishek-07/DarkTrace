@@ -7,6 +7,7 @@ import json
 import math
 import os
 import re
+import secrets
 import sqlite3
 import threading
 import time
@@ -100,6 +101,17 @@ def _auth_db():
             relationship_score REAL NOT NULL,
             risk_level TEXT NOT NULL,
             created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS otp_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            expires_at INTEGER NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
     """)
@@ -210,14 +222,106 @@ def login():
     if not row or not check_password_hash(row["password_hash"], password):
         conn.close()
         return jsonify({"error": "Invalid username or password."}), 401
-    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    conn.execute("UPDATE users SET last_login=? WHERE id=?", (now, row["id"]))
-    conn.commit(); conn.close()
+    
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    now_ts = int(time.time())
+    expires_at = now_ts + 300  # valid 5 minutes
+    
+    conn.execute("UPDATE otp_codes SET used=1 WHERE user_id=? AND used=0", (row["id"],))
+    conn.execute(
+        "INSERT INTO otp_codes (user_id, code, created_at, expires_at, used) VALUES (?, ?, ?, ?, 0)",
+        (row["id"], otp_code, now_ts, expires_at)
+    )
+    conn.commit()
+    conn.close()
+
     flask_session.clear()
-    flask_session["user_id"] = row["id"]
-    flask_session["username"] = row["username"]
-    flask_session["role"] = row["role"]
-    return jsonify({"ok": True, "username": row["username"], "role": row["role"], "redirect": "/admin" if row["role"] == "admin" else "/"})
+    flask_session["pending_otp_user_id"] = row["id"]
+    flask_session["pending_otp_username"] = row["username"]
+    flask_session["pending_otp_role"] = row["role"]
+
+    return jsonify({
+        "ok": True,
+        "otp_required": True,
+        "username": row["username"],
+        "temp_otp": otp_code,
+        "message": "Temporary OTP generated. Please enter the 6-digit code to sign in."
+    })
+
+@app.post("/api/auth/verify-otp")
+def verify_otp():
+    pending_user_id = flask_session.get("pending_otp_user_id")
+    pending_username = flask_session.get("pending_otp_username")
+    pending_role = flask_session.get("pending_otp_role")
+    
+    body = request.get_json(silent=True) or {}
+    code = str(body.get("code", "")).strip()
+
+    if not pending_user_id or not pending_username:
+        return jsonify({"error": "No pending login session. Please sign in again."}), 400
+
+    if not code:
+        return jsonify({"error": "OTP code is required."}), 400
+
+    now_ts = int(time.time())
+    conn = _auth_db()
+    otp_row = conn.execute(
+        "SELECT id, code, expires_at, used FROM otp_codes WHERE user_id=? AND code=? AND used=0 ORDER BY id DESC LIMIT 1",
+        (pending_user_id, code)
+    ).fetchone()
+
+    if not otp_row:
+        conn.close()
+        return jsonify({"error": "Invalid OTP code. Please check and try again."}), 400
+
+    if otp_row["expires_at"] < now_ts:
+        conn.close()
+        return jsonify({"error": "OTP code has expired. Please request a new OTP."}), 400
+
+    conn.execute("UPDATE otp_codes SET used=1 WHERE id=?", (otp_row["id"],))
+    now_str = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    conn.execute("UPDATE users SET last_login=? WHERE id=?", (now_str, pending_user_id))
+    conn.commit()
+    conn.close()
+
+    flask_session.clear()
+    flask_session["user_id"] = pending_user_id
+    flask_session["username"] = pending_username
+    flask_session["role"] = pending_role
+
+    return jsonify({
+        "ok": True,
+        "username": pending_username,
+        "role": pending_role,
+        "redirect": "/admin" if pending_role == "admin" else "/"
+    })
+
+@app.post("/api/auth/resend-otp")
+def resend_otp():
+    pending_user_id = flask_session.get("pending_otp_user_id")
+    pending_username = flask_session.get("pending_otp_username")
+    
+    if not pending_user_id or not pending_username:
+        return jsonify({"error": "No pending login session. Please sign in again."}), 400
+
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    now_ts = int(time.time())
+    expires_at = now_ts + 300
+
+    conn = _auth_db()
+    conn.execute("UPDATE otp_codes SET used=1 WHERE user_id=? AND used=0", (pending_user_id,))
+    conn.execute(
+        "INSERT INTO otp_codes (user_id, code, created_at, expires_at, used) VALUES (?, ?, ?, ?, 0)",
+        (pending_user_id, otp_code, now_ts, expires_at)
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({
+        "ok": True,
+        "temp_otp": otp_code,
+        "message": "A new temporary OTP has been generated."
+    })
 
 @app.post("/api/auth/logout")
 def logout():
