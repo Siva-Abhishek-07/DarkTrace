@@ -128,6 +128,12 @@
         </div>
       </div>
 
+      <!-- Top Navigation Tabs -->
+      <div class="tabs" role="tablist">
+        <a href="/signin" class="tab active" role="tab" aria-selected="true">Sign In</a>
+        <a href="/signup" class="tab" id="createAccountTab" role="tab" aria-selected="false">Create Account</a>
+      </div>
+
       <!-- ── Step 1: Role + Credentials ── -->
       <div id="step-credentials">
         <div class="eyebrow-wrap">
@@ -173,7 +179,7 @@
           <div id="msg-login" class="message" role="alert"></div>
         </form>
 
-        <div class="signin-sep">or</div>
+        <div class="signin-sep" id="signin-sep">or</div>
         <div class="auth-links" id="signup-link">New user? <a href="/signup">Create an account</a></div>
       </div>
 
@@ -228,8 +234,10 @@
 
       document.body.classList.toggle('admin-mode', isAdmin);
 
-      // Show/hide signup link for users only
+      // Show/hide signup options for users only
+      $('createAccountTab').style.display = isAdmin ? 'none' : '';
       $('signup-link').style.display = isAdmin ? 'none' : '';
+      $('signin-sep').style.display = isAdmin ? 'none' : '';
 
       // Clear fields on switch
       $('password').value = '';

@@ -168,15 +168,19 @@ def legacy_login_page():
 
 @app.get("/signin")
 def signin_page():
-    if "user_id" in flask_session:
-        return redirect("/admin" if flask_session.get("role") == "admin" else "/")
     return send_from_directory(ROOT, "signin.html")
 
 @app.get("/signup")
 def signup_page():
-    if "user_id" in flask_session:
-        return redirect("/")
     return send_from_directory(ROOT, "signup.html")
+
+@app.get("/register")
+def register_page():
+    return redirect("/signup")
+
+@app.get("/create-account")
+def create_account_page():
+    return redirect("/signup")
 
 @app.post("/api/auth/register")
 def register():

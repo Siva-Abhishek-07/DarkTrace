@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>DarkTrace — Sign Up</title>
+  <title>DarkTrace — Create Account</title>
 
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
@@ -13,14 +13,186 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="DarkTrace">
   <link rel="apple-touch-icon" href="/icon-192.png">
-  <meta name="description" content="Create a DarkTrace Threat Intelligence account.">
+  <meta name="description" content="Create your DarkTrace Threat Intelligence account.">
 
   <link rel="stylesheet" href="auth.css">
+  <style>
+    .admin-notice {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 12px;
+      border: 1px solid #20364d;
+      border-radius: 9px;
+      background: #081422;
+      color: #8da4bc;
+      font-size: 11px;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+    .admin-notice strong {
+      color: var(--cyan);
+    }
+    .pwd-requirements {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px 10px;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border: 1px solid #1c2e42;
+      border-radius: 7px;
+      background: #07101a;
+      font-size: 10px;
+      color: #6c849b;
+    }
+    .pwd-req {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .pwd-req.valid {
+      color: var(--green);
+    }
+    .pwd-req.valid::before {
+      content: '✓';
+      font-weight: 900;
+    }
+    .pwd-req:not(.valid)::before {
+      content: '○';
+    }
+  </style>
 </head>
+<body>
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="logo">⌁</div>
+        <div>
+          <strong>DarkTrace</strong>
+          <span>Threat Intelligence</span>
+        </div>
+      </div>
 
-<body><div class="auth-shell"><div class="auth-card"><div class="brand"><div class="logo">⌁</div><div><strong>DarkTrace</strong><span>Threat Intelligence</span></div></div><div class="eyebrow">NEW USER</div><h1>Create your account</h1><p class="intro">Register for a DarkTrace account. Every username uses the @darktrace.in domain.</p>
-<form id="form"><label>Username</label><div class="username-wrap"><input id="username" autocomplete="username" placeholder="yourname" required><span>@darktrace.in</span></div><small class="hint">Use 3–31 letters, numbers, dots, underscores or hyphens.</small><label>Password</label><input id="password" type="password" autocomplete="new-password" minlength="6" placeholder="Min 6: Aa1!" required><small class="hint">Minimum 6 characters: include 1 lowercase, 1 uppercase, 1 number, and 1 special character.</small><label>Confirm password</label><input id="confirm" type="password" autocomplete="new-password" placeholder="Re-enter password" required><button class="primary" id="btn" type="submit">Create account</button><div id="msg" class="message" role="alert"></div></form>
-<div class="auth-links">Already registered? <a href="/signin">Sign in</a></div><div class="security-note">🔐 Your password is stored as a secure hash. Duplicate usernames cannot be registered.</div></div></div>
-<script>const $=id=>document.getElementById(id);$('form').onsubmit=async e=>{e.preventDefault();const p=$('password').value;if(!/[a-z]/.test(p)||!/[A-Z]/.test(p)||!/\d/.test(p)||!/[^A-Za-z0-9]/.test(p)||p.length<6){$('msg').textContent='Password must be at least 6 characters and include one lowercase letter, one uppercase letter, one number, and one special character.';$('msg').className='message error';return}if(p!==$('confirm').value){$('msg').textContent='Passwords do not match.';$('msg').className='message error';return}$('btn').disabled=true;$('msg').textContent='Creating account…';$('msg').className='message';try{const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});const d=await r.json();if(!r.ok)throw Error(d.error||'Registration failed');$('msg').textContent='Account created. Redirecting to sign in…';$('msg').className='message success';setTimeout(()=>location.href='/signin',700)}catch(err){$('msg').textContent=err.message;$('msg').className='message error'}finally{$('btn').disabled=false}};</script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
-</body></html>
+      <!-- Top Navigation Tabs -->
+      <div class="tabs" role="tablist">
+        <a href="/signin" class="tab" role="tab" aria-selected="false">Sign In</a>
+        <a href="/signup" class="tab active" role="tab" aria-selected="true">Create Account</a>
+      </div>
+
+      <div class="eyebrow">USER REGISTRATION</div>
+      <h1>Create your account</h1>
+      <p class="intro">Register a new analyst account. Usernames automatically use the @darktrace.in domain.</p>
+
+      <div class="admin-notice">
+        <span>🛡️</span>
+        <div><strong>Admin Notice:</strong> Admin accounts are pre-configured. Only standard user accounts can be registered.</div>
+      </div>
+
+      <form id="form">
+        <label for="username">Username</label>
+        <div class="username-wrap">
+          <input id="username" autocomplete="username" placeholder="yourname" required>
+          <span>@darktrace.in</span>
+        </div>
+        <small class="hint">Use 3–31 letters, numbers, dots, underscores or hyphens.</small>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="new-password" placeholder="Create password" required>
+        
+        <div class="pwd-requirements" id="pwdReqs">
+          <div class="pwd-req" id="req-len">6+ characters</div>
+          <div class="pwd-req" id="req-upper">Uppercase (A-Z)</div>
+          <div class="pwd-req" id="req-lower">Lowercase (a-z)</div>
+          <div class="pwd-req" id="req-num">Number (0-9)</div>
+          <div class="pwd-req" id="req-special" style="grid-column: 1/-1;">Special character (!@#$%^&*…)</div>
+        </div>
+
+        <label for="confirm">Confirm password</label>
+        <input id="confirm" type="password" autocomplete="new-password" placeholder="Re-enter password" required>
+
+        <button class="primary" id="btn" type="submit">Create account</button>
+        <div id="msg" class="message" role="alert"></div>
+      </form>
+
+      <div class="auth-links">Already have an account? <a href="/signin">Sign in here</a></div>
+      <div class="security-note">🔐 Your password is encrypted with scrypt hashing. Duplicate accounts cannot be registered.</div>
+    </div>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    // Real-time password validator checklist
+    $('password').addEventListener('input', () => {
+      const p = $('password').value;
+      $('req-len').classList.toggle('valid', p.length >= 6);
+      $('req-upper').classList.toggle('valid', /[A-Z]/.test(p));
+      $('req-lower').classList.toggle('valid', /[a-z]/.test(p));
+      $('req-num').classList.toggle('valid', /\d/.test(p));
+      $('req-special').classList.toggle('valid', /[^A-Za-z0-9]/.test(p));
+    });
+
+    $('form').onsubmit = async e => {
+      e.preventDefault();
+      const username = $('username').value.trim();
+      const p = $('password').value;
+      const confirm = $('confirm').value;
+
+      if (!username) {
+        $('msg').textContent = 'Please enter a username.';
+        $('msg').className = 'message error';
+        return;
+      }
+
+      if (username.toLowerCase() === 'admin' || username.toLowerCase().startsWith('admin@')) {
+        $('msg').textContent = 'The admin username is reserved. Please choose a different username.';
+        $('msg').className = 'message error';
+        return;
+      }
+
+      if (p.length < 6 || !/[a-z]/.test(p) || !/[A-Z]/.test(p) || !/\d/.test(p) || !/[^A-Za-z0-9]/.test(p)) {
+        $('msg').textContent = 'Password must meet all 5 requirements listed above.';
+        $('msg').className = 'message error';
+        return;
+      }
+
+      if (p !== confirm) {
+        $('msg').textContent = 'Passwords do not match. Please verify.';
+        $('msg').className = 'message error';
+        return;
+      }
+
+      $('btn').disabled = true;
+      $('msg').textContent = 'Creating account…';
+      $('msg').className = 'message';
+
+      try {
+        const r = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password: p })
+        });
+        const d = await r.json();
+        if (!r.ok) throw Error(d.error || 'Registration failed');
+
+        $('msg').textContent = 'Account created successfully! Redirecting to sign in…';
+        $('msg').className = 'message success';
+        setTimeout(() => {
+          location.href = '/signin';
+        }, 1000);
+      } catch (err) {
+        $('msg').textContent = err.message;
+        $('msg').className = 'message error';
+      } finally {
+        $('btn').disabled = false;
+      }
+    };
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
