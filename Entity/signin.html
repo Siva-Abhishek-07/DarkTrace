@@ -239,6 +239,10 @@
             </button>
           </div>
 
+          <div class="forgot-wrap" id="forgot-wrap">
+            <a href="javascript:void(0)" id="link-forgot-pwd" class="forgot-link">Forgot password?</a>
+          </div>
+
           <button class="primary" id="btn-login" type="submit">Sign in</button>
           <div id="msg-login" class="message" role="alert"></div>
         </form>
@@ -247,7 +251,7 @@
         <div class="auth-links" id="signup-link">New user? <a href="/signup">Create an account</a></div>
       </div>
 
-      <!-- ── Step 2: OTP ── -->
+      <!-- ── Step 2: OTP (Login) ── -->
       <div id="step-otp" class="hidden">
         <div class="eyebrow-wrap">
           <div class="eyebrow">2-STEP VERIFICATION</div>
@@ -263,7 +267,7 @@
         </div>
 
         <form id="form-otp">
-          <label>6-Digit Verification Code</label>
+          <label for="otp-code-input">6-Digit Verification Code</label>
           <input id="otp-code-input" class="otp-input" type="text" inputmode="numeric"
             maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code"
             placeholder="000000" required>
@@ -278,6 +282,87 @@
         </div>
       </div>
 
+      <!-- ── Step 3: Forgot Password (Request OTP) ── -->
+      <div id="step-forgot" class="hidden">
+        <div class="eyebrow">PASSWORD RECOVERY</div>
+        <h1>Reset your password</h1>
+        <p class="intro">Enter your username to receive a temporary security OTP code.</p>
+
+        <form id="form-forgot">
+          <label for="forgot-username">Username</label>
+          <div class="username-wrap">
+            <input id="forgot-username" autocomplete="username" placeholder="yourname" required>
+            <span>@darktrace.in</span>
+          </div>
+          <small class="hint">The @darktrace.in suffix is added automatically.</small>
+
+          <button class="primary" id="btn-forgot-submit" type="submit">Send Temporary OTP</button>
+          <div id="msg-forgot" class="message" role="alert"></div>
+        </form>
+
+        <div class="auth-actions" style="margin-top:16px; justify-content:center;">
+          <button type="button" id="btn-forgot-back">← Back to Sign In</button>
+        </div>
+      </div>
+
+      <!-- ── Step 4: Reset Password (Enter OTP & New Password) ── -->
+      <div id="step-reset" class="hidden">
+        <div class="eyebrow">CREATE NEW PASSWORD</div>
+        <h1>Set New Password</h1>
+        <p class="intro">Enter the temporary security OTP and choose a strong new password.</p>
+
+        <div id="otp-reset-banner" class="otp-banner">
+          <small>🔑 Temporary Security Code</small>
+          <div id="demo-reset-otp-val" class="otp-code">------</div>
+          <div class="otp-subtext">Valid for 5 minutes</div>
+        </div>
+
+        <form id="form-reset">
+          <label for="reset-otp-input">6-Digit Verification Code</label>
+          <input id="reset-otp-input" class="otp-input" type="text" inputmode="numeric"
+            maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code"
+            placeholder="000000" required>
+
+          <label for="new-password">New Password</label>
+          <div class="password-wrap">
+            <input id="new-password" type="password" autocomplete="new-password" placeholder="Create new password" required>
+            <button type="button" class="eye-toggle-btn" id="toggleNewPassword" aria-label="Toggle new password visibility" title="Show/Hide new password">
+              <svg id="eyeIconNewPassword" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <div class="pwd-requirements" id="resetPwdReqs">
+            <div class="pwd-req" id="reset-req-len">6+ characters</div>
+            <div class="pwd-req" id="reset-req-upper">Uppercase (A-Z)</div>
+            <div class="pwd-req" id="reset-req-lower">Lowercase (a-z)</div>
+            <div class="pwd-req" id="reset-req-num">Number (0-9)</div>
+            <div class="pwd-req" id="reset-req-special" style="grid-column: 1/-1;">Special character (!@#$%^&*…)</div>
+          </div>
+
+          <label for="new-password-confirm">Confirm New Password</label>
+          <div class="password-wrap">
+            <input id="new-password-confirm" type="password" autocomplete="new-password" placeholder="Re-enter new password" required>
+            <button type="button" class="eye-toggle-btn" id="toggleNewPasswordConfirm" aria-label="Toggle confirm new password visibility" title="Show/Hide confirm new password">
+              <svg id="eyeIconNewPasswordConfirm" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25"></circle>
+              </svg>
+            </button>
+          </div>
+
+          <button class="primary" id="btn-reset-submit" type="submit">Update Password &amp; Sign In</button>
+          <div id="msg-reset" class="message" role="alert"></div>
+        </form>
+
+        <div class="auth-actions">
+          <button type="button" id="btn-reset-resend">🔄 Resend OTP</button>
+          <button type="button" id="btn-reset-back">← Back to Sign In</button>
+        </div>
+      </div>
+
       <div class="security-note">🔒 Two-Factor OTP Security · Password hashing enabled</div>
     </div>
   </div>
@@ -285,6 +370,15 @@
   <script>
     const $ = id => document.getElementById(id);
     let currentRole = 'user'; // 'user' | 'admin'
+
+    // ── Step Navigation ──────────────────────────────────
+    const steps = ['step-credentials', 'step-otp', 'step-forgot', 'step-reset'];
+    function showStep(stepId) {
+      steps.forEach(s => {
+        const el = $(s);
+        if (el) el.classList.toggle('hidden', s !== stepId);
+      });
+    }
 
     // ── Role toggle ──────────────────────────────────────
     function setRole(role) {
@@ -298,10 +392,11 @@
 
       document.body.classList.toggle('admin-mode', isAdmin);
 
-      // Show/hide signup options for users only
+      // Show/hide signup & forgot password options for users only
       $('createAccountTab').style.display = isAdmin ? 'none' : '';
       $('signup-link').style.display = isAdmin ? 'none' : '';
       $('signin-sep').style.display = isAdmin ? 'none' : '';
+      $('forgot-wrap').style.display = isAdmin ? 'none' : '';
 
       // Clear fields on switch
       $('password').value = '';
@@ -315,12 +410,30 @@
     const eyeSvgOpen = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25"></circle>';
     const eyeSvgClosed = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23" stroke-width="2.5"></line>';
 
-    $('togglePasswordSignIn').onclick = () => {
-      const pwd = $('password');
-      const isText = pwd.type === 'text';
-      pwd.type = isText ? 'password' : 'text';
-      $('eyeIconSignIn').innerHTML = isText ? eyeSvgOpen : eyeSvgClosed;
-    };
+    function setupPasswordToggle(btnId, inputId, iconId) {
+      const btn = $(btnId);
+      if (!btn) return;
+      btn.onclick = () => {
+        const inp = $(inputId);
+        const isText = inp.type === 'text';
+        inp.type = isText ? 'password' : 'text';
+        $(iconId).innerHTML = isText ? eyeSvgOpen : eyeSvgClosed;
+      };
+    }
+
+    setupPasswordToggle('togglePasswordSignIn', 'password', 'eyeIconSignIn');
+    setupPasswordToggle('toggleNewPassword', 'new-password', 'eyeIconNewPassword');
+    setupPasswordToggle('toggleNewPasswordConfirm', 'new-password-confirm', 'eyeIconNewPasswordConfirm');
+
+    // ── Real-time reset password validator checklist ──────
+    $('new-password').addEventListener('input', () => {
+      const p = $('new-password').value;
+      $('reset-req-len').classList.toggle('valid', p.length >= 6);
+      $('reset-req-upper').classList.toggle('valid', /[A-Z]/.test(p));
+      $('reset-req-lower').classList.toggle('valid', /[a-z]/.test(p));
+      $('reset-req-num').classList.toggle('valid', /\d/.test(p));
+      $('reset-req-special').classList.toggle('valid', /[^A-Za-z0-9]/.test(p));
+    });
 
     // ── Login form ───────────────────────────────────────
     $('form-login').onsubmit = async e => {
@@ -349,8 +462,7 @@
 
         if (data.otp_required) {
           $('demo-otp-val').textContent = data.temp_otp || '------';
-          $('step-credentials').classList.add('hidden');
-          $('step-otp').classList.remove('hidden');
+          showStep('step-otp');
           $('otp-code-input').value = '';
           $('otp-code-input').focus();
           $('msg-otp').textContent = data.message || 'OTP generated successfully.';
@@ -425,12 +537,145 @@
       }
     };
 
-    // ── Back button ──────────────────────────────────────
+    // ── Back button from OTP ─────────────────────────────
     $('btn-back').onclick = () => {
-      $('step-otp').classList.add('hidden');
-      $('step-credentials').classList.remove('hidden');
+      showStep('step-credentials');
       $('msg-login').textContent = '';
       $('msg-login').className = 'message';
+    };
+
+    // ── Forgot Password Navigation ───────────────────────
+    $('link-forgot-pwd').onclick = () => {
+      showStep('step-forgot');
+      $('forgot-username').value = $('username').value.trim();
+      $('msg-forgot').textContent = '';
+      $('msg-forgot').className = 'message';
+    };
+
+    $('btn-forgot-back').onclick = () => {
+      showStep('step-credentials');
+      $('msg-login').textContent = '';
+      $('msg-login').className = 'message';
+    };
+
+    // ── Forgot Password Request OTP ──────────────────────
+    $('form-forgot').onsubmit = async e => {
+      e.preventDefault();
+      const userVal = $('forgot-username').value.trim();
+      if (!userVal) {
+        $('msg-forgot').textContent = 'Please enter your username.';
+        $('msg-forgot').className = 'message error';
+        return;
+      }
+
+      $('btn-forgot-submit').disabled = true;
+      $('msg-forgot').textContent = 'Generating recovery OTP…';
+      $('msg-forgot').className = 'message';
+
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: userVal })
+        });
+        const data = await res.json();
+        if (!res.ok) throw Error(data.error || 'Password reset request failed');
+
+        $('demo-reset-otp-val').textContent = data.temp_otp || '------';
+        showStep('step-reset');
+        $('reset-otp-input').value = '';
+        $('new-password').value = '';
+        $('new-password-confirm').value = '';
+        $('msg-reset').textContent = data.message || 'Temporary OTP generated.';
+        $('msg-reset').className = 'message success';
+        $('reset-otp-input').focus();
+      } catch (err) {
+        $('msg-forgot').textContent = err.message;
+        $('msg-forgot').className = 'message error';
+      } finally {
+        $('btn-forgot-submit').disabled = false;
+      }
+    };
+
+    // ── Resend Reset OTP ─────────────────────────────────
+    $('btn-reset-resend').onclick = async () => {
+      $('btn-reset-resend').disabled = true;
+      $('msg-reset').textContent = 'Generating new OTP…';
+      $('msg-reset').className = 'message';
+
+      try {
+        const res = await fetch('/api/auth/resend-reset-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw Error(data.error || 'Failed to resend OTP');
+
+        $('demo-reset-otp-val').textContent = data.temp_otp || '------';
+        $('msg-reset').textContent = data.message || 'New OTP generated.';
+        $('msg-reset').className = 'message success';
+      } catch (err) {
+        $('msg-reset').textContent = err.message;
+        $('msg-reset').className = 'message error';
+      } finally {
+        $('btn-reset-resend').disabled = false;
+      }
+    };
+
+    // ── Back button from Reset step ──────────────────────
+    $('btn-reset-back').onclick = () => {
+      showStep('step-credentials');
+      $('msg-login').textContent = '';
+      $('msg-login').className = 'message';
+    };
+
+    // ── Submit Password Reset ────────────────────────────
+    $('form-reset').onsubmit = async e => {
+      e.preventDefault();
+      const code = $('reset-otp-input').value.trim();
+      const newPwd = $('new-password').value;
+      const confirmPwd = $('new-password-confirm').value;
+
+      if (!code || code.length !== 6) {
+        $('msg-reset').textContent = 'Please enter a valid 6-digit OTP code.';
+        $('msg-reset').className = 'message error';
+        return;
+      }
+
+      if (newPwd.length < 6 || !/[a-z]/.test(newPwd) || !/[A-Z]/.test(newPwd) || !/\d/.test(newPwd) || !/[^A-Za-z0-9]/.test(newPwd)) {
+        $('msg-reset').textContent = 'New password must meet all 5 requirements listed above.';
+        $('msg-reset').className = 'message error';
+        return;
+      }
+
+      if (newPwd !== confirmPwd) {
+        $('msg-reset').textContent = 'Passwords do not match. Please verify.';
+        $('msg-reset').className = 'message error';
+        return;
+      }
+
+      $('btn-reset-submit').disabled = true;
+      $('msg-reset').textContent = 'Updating password…';
+      $('msg-reset').className = 'message';
+
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, password: newPwd })
+        });
+        const data = await res.json();
+        if (!res.ok) throw Error(data.error || 'Password update failed');
+
+        $('msg-reset').textContent = data.message || 'Password updated! Redirecting…';
+        $('msg-reset').className = 'message success';
+        setTimeout(() => { location.href = data.redirect || '/'; }, 600);
+      } catch (err) {
+        $('msg-reset').textContent = err.message;
+        $('msg-reset').className = 'message error';
+      } finally {
+        $('btn-reset-submit').disabled = false;
+      }
     };
   </script>
 
