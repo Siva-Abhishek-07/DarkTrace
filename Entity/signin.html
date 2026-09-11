@@ -16,6 +16,106 @@
   <meta name="description" content="Sign in to your DarkTrace Threat Intelligence account.">
 
   <link rel="stylesheet" href="auth.css">
+  <style>
+    /* ── Role Selector ── */
+    .role-selector {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 26px;
+    }
+    .role-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 16px 10px;
+      border: 1px solid #263b52;
+      border-radius: 13px;
+      background: #08121d;
+      color: var(--muted);
+      cursor: pointer;
+      transition: border-color .2s, background .2s, color .2s, box-shadow .2s, transform .15s;
+      text-align: center;
+    }
+    .role-btn:hover { border-color: #3e6077; color: #cfe4f5; }
+    .role-btn.active {
+      border-color: var(--cyan);
+      background: linear-gradient(135deg, #0c2233, #0f1c34);
+      color: #fff;
+      box-shadow: 0 0 22px rgba(85,221,255,.15), inset 0 0 18px rgba(85,221,255,.06);
+    }
+    .role-btn.active.admin-btn {
+      border-color: var(--purple);
+      background: linear-gradient(135deg, #140c27, #1a102e);
+      box-shadow: 0 0 22px rgba(156,124,255,.15), inset 0 0 18px rgba(156,124,255,.06);
+    }
+    .role-btn .role-icon {
+      font-size: 26px;
+      line-height: 1;
+    }
+    .role-btn .role-label {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+    .role-btn .role-desc {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: .3px;
+    }
+    .role-btn.active .role-desc { color: #8ab0c8; }
+    .role-btn.active.admin-btn .role-desc { color: #aa96d8; }
+
+    /* Admin badge shown on the eyebrow when admin selected */
+    .eyebrow-wrap { display: flex; align-items: center; gap: 8px; }
+    .admin-badge {
+      display: none;
+      padding: 2px 7px;
+      border-radius: 99px;
+      background: rgba(156,124,255,.15);
+      border: 1px solid rgba(156,124,255,.4);
+      color: var(--purple);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: .7px;
+      text-transform: uppercase;
+    }
+    body.admin-mode .admin-badge { display: inline; }
+    body.admin-mode .eyebrow { color: var(--purple); }
+
+    /* Admin username row — static, non-editable */
+    .admin-user-display {
+      display: none;
+      padding: 12px;
+      border: 1px solid rgba(156,124,255,.35);
+      border-radius: 8px;
+      background: rgba(156,124,255,.07);
+      color: #c4b4f0;
+      font-size: 13px;
+      font-family: ui-monospace, monospace;
+      margin-bottom: 4px;
+    }
+    body.admin-mode .admin-user-display { display: block; }
+    body.admin-mode .user-username-row { display: none; }
+
+    /* Subtle separator */
+    .signin-sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 18px 0 0;
+      color: #3d5267;
+      font-size: 10px;
+    }
+    .signin-sep::before, .signin-sep::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #1e3047;
+    }
+  </style>
 </head>
 <body>
   <div class="auth-shell">
@@ -28,29 +128,61 @@
         </div>
       </div>
 
+      <!-- ── Step 1: Role + Credentials ── -->
       <div id="step-credentials">
-        <div class="eyebrow">SECURE SIGN IN</div>
+        <div class="eyebrow-wrap">
+          <div class="eyebrow">SECURE SIGN IN</div>
+          <span class="admin-badge">ADMIN</span>
+        </div>
         <h1>Welcome back</h1>
         <p class="intro">Sign in to access your DarkTrace investigation dashboard.</p>
+
+        <!-- Role selector -->
+        <div class="role-selector" role="group" aria-label="Select account type">
+          <button type="button" class="role-btn active" id="roleUser" aria-pressed="true">
+            <span class="role-icon">👤</span>
+            <span class="role-label">User</span>
+            <span class="role-desc">Standard account</span>
+          </button>
+          <button type="button" class="role-btn admin-btn" id="roleAdmin" aria-pressed="false">
+            <span class="role-icon">🛡️</span>
+            <span class="role-label">Admin</span>
+            <span class="role-desc">Administrator access</span>
+          </button>
+        </div>
+
         <form id="form-login">
           <label>Username</label>
-          <div class="username-wrap">
-            <input id="username" autocomplete="username" placeholder="yourname" required>
-            <span>@darktrace.in</span>
+
+          <!-- Admin username (static display) -->
+          <div class="admin-user-display" aria-label="Admin username">admin@darktrace.in</div>
+
+          <!-- User username input -->
+          <div class="user-username-row">
+            <div class="username-wrap">
+              <input id="username" autocomplete="username" placeholder="yourname" required>
+              <span>@darktrace.in</span>
+            </div>
+            <small class="hint">The @darktrace.in suffix is added automatically.</small>
           </div>
-          <small class="hint">The @darktrace.in suffix is added automatically.</small>
-          
+
           <label>Password</label>
           <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
-          
+
           <button class="primary" id="btn-login" type="submit">Sign in</button>
           <div id="msg-login" class="message" role="alert"></div>
         </form>
-        <div class="auth-links">New user? <a href="/signup">Create an account</a></div>
+
+        <div class="signin-sep">or</div>
+        <div class="auth-links" id="signup-link">New user? <a href="/signup">Create an account</a></div>
       </div>
 
+      <!-- ── Step 2: OTP ── -->
       <div id="step-otp" class="hidden">
-        <div class="eyebrow">2-STEP VERIFICATION</div>
+        <div class="eyebrow-wrap">
+          <div class="eyebrow">2-STEP VERIFICATION</div>
+          <span class="admin-badge">ADMIN</span>
+        </div>
         <h1>Enter OTP</h1>
         <p class="intro">A temporary OTP code has been generated for your login request.</p>
 
@@ -62,7 +194,9 @@
 
         <form id="form-otp">
           <label>6-Digit Verification Code</label>
-          <input id="otp-code-input" class="otp-input" type="text" maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code" placeholder="000000" required>
+          <input id="otp-code-input" class="otp-input" type="text" inputmode="numeric"
+            maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code"
+            placeholder="000000" required>
 
           <button class="primary" id="btn-otp" type="submit">Verify OTP &amp; Sign In</button>
           <div id="msg-otp" class="message" role="alert"></div>
@@ -80,20 +214,51 @@
 
   <script>
     const $ = id => document.getElementById(id);
+    let currentRole = 'user'; // 'user' | 'admin'
 
+    // ── Role toggle ──────────────────────────────────────
+    function setRole(role) {
+      currentRole = role;
+      const isAdmin = role === 'admin';
+
+      $('roleUser').classList.toggle('active', !isAdmin);
+      $('roleUser').setAttribute('aria-pressed', String(!isAdmin));
+      $('roleAdmin').classList.toggle('active', isAdmin);
+      $('roleAdmin').setAttribute('aria-pressed', String(isAdmin));
+
+      document.body.classList.toggle('admin-mode', isAdmin);
+
+      // Show/hide signup link for users only
+      $('signup-link').style.display = isAdmin ? 'none' : '';
+
+      // Clear fields on switch
+      $('password').value = '';
+      $('msg-login').textContent = '';
+    }
+
+    $('roleUser').addEventListener('click', () => setRole('user'));
+    $('roleAdmin').addEventListener('click', () => setRole('admin'));
+
+    // ── Login form ───────────────────────────────────────
     $('form-login').onsubmit = async e => {
       e.preventDefault();
       $('btn-login').disabled = true;
       $('msg-login').textContent = 'Authenticating…';
       $('msg-login').className = 'message';
 
+      // Build username
+      const usernameVal = currentRole === 'admin'
+        ? 'admin'
+        : $('username').value.trim();
+
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            username: $('username').value.trim(),
-            password: $('password').value
+            username: usernameVal,
+            password: $('password').value,
+            role_hint: currentRole
           })
         });
         const data = await res.json();
@@ -118,6 +283,7 @@
       }
     };
 
+    // ── OTP verification ─────────────────────────────────
     $('form-otp').onsubmit = async e => {
       e.preventDefault();
       const code = $('otp-code-input').value.trim();
@@ -142,9 +308,7 @@
 
         $('msg-otp').textContent = 'OTP verified! Redirecting…';
         $('msg-otp').className = 'message success';
-        setTimeout(() => {
-          location.href = data.redirect || '/';
-        }, 400);
+        setTimeout(() => { location.href = data.redirect || '/'; }, 400);
       } catch (err) {
         $('msg-otp').textContent = err.message;
         $('msg-otp').className = 'message error';
@@ -153,6 +317,7 @@
       }
     };
 
+    // ── Resend OTP ───────────────────────────────────────
     $('btn-resend').onclick = async () => {
       $('btn-resend').disabled = true;
       $('msg-otp').textContent = 'Generating new OTP…';
@@ -177,6 +342,7 @@
       }
     };
 
+    // ── Back button ──────────────────────────────────────
     $('btn-back').onclick = () => {
       $('step-otp').classList.add('hidden');
       $('step-credentials').classList.remove('hidden');

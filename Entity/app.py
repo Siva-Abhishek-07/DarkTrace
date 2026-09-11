@@ -66,8 +66,8 @@ def _get_writable_path(filename: str) -> str:
 AUTH_DB = _get_writable_path("darktrace_users.db")
 USERNAME_SUFFIX = "@darktrace.in"
 ADMIN_USERNAME = "admin@darktrace.in"
-# Password is intentionally stored only as a hash. Demo credential is provided separately.
-ADMIN_PASSWORD_HASH = "pbkdf2:sha256:600000$DarkTraceAdmin9264$a1f76375e725e8c071b8987d3d0435d263cc04bc904ecdb55c8df5aef98c6cc3"
+# Admin credentials: username = admin  (suffix added automatically)  |  password = DarkTrace@Admin1
+ADMIN_PASSWORD_HASH = "scrypt:32768:8:1$eTt8Dmx9Dcz3EDqk$ba3f30cf90b6f32dd96db8b6f9b9767269c8fcd195118e8f7a7ef0989ddaacfd42c497dca9649921f974023fd26f65ceb78d42fca2abaf87c8cc92d93bc17d53"
 
 app.secret_key = os.environ.get("DARKTRACE_SECRET_KEY") or "darktrace-local-development-secret-change-me"
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
@@ -212,21 +212,34 @@ def register():
 @app.post("/api/auth/login")
 def login():
     body = request.get_json(silent=True) or {}
+    role_hint = str(body.get("role_hint", "user")).strip().lower()
+
     try:
         username = normalize_username(body.get("username", ""))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     password = str(body.get("password", ""))
+
+    # If admin role selected, enforce that only the fixed admin account is used.
+    if role_hint == "admin":
+        if username != ADMIN_USERNAME:
+            return jsonify({"error": "Invalid admin credentials."}), 401
+
     conn = _auth_db()
     row = conn.execute("SELECT id, username, password_hash, role FROM users WHERE username = ? COLLATE NOCASE", (username,)).fetchone()
     if not row or not check_password_hash(row["password_hash"], password):
         conn.close()
         return jsonify({"error": "Invalid username or password."}), 401
-    
+
+    # Prevent a regular user from signing in via the admin role selector.
+    if role_hint == "admin" and row["role"] != "admin":
+        conn.close()
+        return jsonify({"error": "Invalid admin credentials."}), 401
+
     otp_code = f"{secrets.randbelow(900000) + 100000}"
     now_ts = int(time.time())
     expires_at = now_ts + 300  # valid 5 minutes
-    
+
     conn.execute("UPDATE otp_codes SET used=1 WHERE user_id=? AND used=0", (row["id"],))
     conn.execute(
         "INSERT INTO otp_codes (user_id, code, created_at, expires_at, used) VALUES (?, ?, ?, ?, 0)",
