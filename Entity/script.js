@@ -124,52 +124,260 @@ function initNotificationCenter(){
  document.addEventListener("click",e=>{if(!panel.contains(e.target)&&!bell.contains(e.target))panel.classList.remove("open")});
 }
 function setStatus(t,ok=true){$("statusText").textContent=t;$("statusDot").classList.toggle("offline",!ok)}
+function updateToggleBtn(){
+  const btn=$("toggleEntities");
+  if(!btn)return;
+  const isCollapsed=$("entityGrid")?.classList.contains("collapsed");
+  const count=state.entities.length, selected=selectedEntities().length;
+  btn.textContent=isCollapsed?`Show Slots (${selected}/${count})`:"Hide Slots";
+}
+
+function renderActiveInvestigationBar(d){
+  const bar=$("activeInvestigationBar");
+  const profilesBtn=$("addEntityFromProfiles");
+  const graphBtn=$("addEntityFromGraph");
+  if(!d||!d.entities||!d.entities.length){
+    if(bar) bar.style.display="none";
+    if(profilesBtn) profilesBtn.style.display="none";
+    if(graphBtn) graphBtn.style.display="none";
+    return;
+  }
+  if(profilesBtn){profilesBtn.style.display="inline-flex";profilesBtn.onclick=addEntity;}
+  if(graphBtn){graphBtn.style.display="inline-flex";graphBtn.onclick=addEntity;}
+  if(!bar)return;
+  const isCollapsed=$("entityGrid")?.classList.contains("collapsed");
+  const all=selectedEntities();
+  const newEntities=all.filter(e=>!d.entities.some(ae=>ae.id===e.id));
+  bar.innerHTML=`
+    <div class="active-investigation-info">
+      <span class="active-investigation-title">⚡ Analyzed Investigation (${d.entities.length} entities):</span>
+      <div class="active-investigation-entities">
+        ${d.entities.map(e=>`<span class="active-entity-pill">${esc(e.label)} <small>${esc(e.id)}</small></span>`).join("")}
+        ${newEntities.map(e=>`<span class="active-entity-pill new">＋ ${esc(e.label)} <small>(pending)</small></span>`).join("")}
+      </div>
+    </div>
+    <div class="active-investigation-actions">
+      <button type="button" class="add-to-investigation-btn" id="barAddEntity">＋ Add Entity to Analysis</button>
+      <button type="button" class="bar-toggle-btn" id="barToggleGrid">${isCollapsed?"Show Slots":"Hide Slots"}</button>
+    </div>
+  `;
+  bar.style.display="flex";
+  $("barAddEntity").onclick=addEntity;
+  $("barToggleGrid").onclick=()=>{
+    $("entityGrid").classList.toggle("collapsed");
+    updateToggleBtn();
+    renderActiveInvestigationBar(state.result);
+  };
+}
+
 function renderEntityInputs(){
- const grid=$("entityGrid");
- const activeCount=Math.max(2,state.entities.length);
- if(state.entities.length<2) state.entities=Array(2).fill(null);
- grid.innerHTML=state.entities.map((entity,i)=>`<div class="entity-box multi-box entity-enter" data-slot="${i}">
-   <label>ENTITY ${i+1}</label>
-   <div class="search-row">
-     <input id="entitySearch${i}" autocomplete="off" placeholder="APT29, Microsoft, Tesla…">
-     <button class="search-btn" id="entitySearchBtn${i}">Search</button>
-   </div>
-   <div class="results" id="entityResults${i}"></div>
-   <div class="selected ${entity?'chosen':''}" id="entitySelected${i}">${entity?`<b>${esc(entity.label)}</b><span>${esc(entity.id)}</span>`:"No entity selected"}</div>
-   ${i>=2?`<button class="remove-entity" type="button" data-remove="${i}" aria-label="Remove entity ${i+1}" title="Remove entity">×</button>`:""}
- </div>`).join("");
- for(let i=0;i<state.entities.length;i++){
-   $(`entitySearchBtn${i}`).onclick=()=>searchEntities(i);
-   $(`entitySearch${i}`).addEventListener("keydown",e=>{if(e.key==="Enter")searchEntities(i)});
-   if(state.entities[i]) $(`entitySearch${i}`).value=state.entities[i].label;
- }
- grid.querySelectorAll("[data-remove]").forEach(btn=>btn.onclick=()=>removeEntity(Number(btn.dataset.remove)));
- updateEntityCounter();
+  const grid=$("entityGrid");
+  if(state.entities.length<2) state.entities=Array(2).fill(null);
+  const analyzedIds=new Set((state.result?.entities||[]).map(e=>e.id));
+  const totalSelected=selectedEntities().length;
+
+  grid.innerHTML=state.entities.map((entity,i)=>{
+    const isAnalyzed=entity&&analyzedIds.has(entity.id);
+    const isNew=Boolean(state.result&&!isAnalyzed);
+    const slotClass=`entity-box multi-box entity-enter ${isNew?'new-slot':''}`;
+
+    let tagHtml='';
+    if(isAnalyzed){
+      tagHtml='<span class="status-tag analyzed">✓ Analyzed</span>';
+    } else if(isNew && entity){
+      tagHtml=`<span class="status-tag new">＋ Adds to analysis</span>`;
+    } else if(isNew && !entity){
+      tagHtml=`<span class="status-tag new">＋ New Slot</span>`;
+    }
+
+    let removeBtnHtml='';
+    if(state.entities.length>2){
+      removeBtnHtml=`<button class="remove-entity" type="button" data-remove="${i}" aria-label="Remove entity slot ${i+1}" title="Remove this entity slot">×</button>`;
+    } else if(entity){
+      removeBtnHtml=`<button class="remove-entity clear-only" type="button" data-clear="${i}" aria-label="Clear entity ${i+1}" title="Clear this slot">×</button>`;
+    }
+
+    let quickActionHtml='';
+    if(state.result && entity && !isAnalyzed){
+      quickActionHtml=`
+        <div class="slot-analyze-row">
+          <button type="button" class="slot-analyze-btn" data-analyze-all="1">⚡ Analyze all ${totalSelected} entities now →</button>
+        </div>`;
+    }
+
+    return `
+      <div class="${slotClass}" data-slot="${i}">
+        <div class="entity-box-head">
+          <label>ENTITY ${i+1}</label>
+          ${tagHtml}
+        </div>
+        ${removeBtnHtml}
+        <div class="search-row">
+          <input id="entitySearch${i}" autocomplete="off" placeholder="APT29, Microsoft, Tesla…">
+          <button class="search-btn" id="entitySearchBtn${i}">Search</button>
+        </div>
+        <div class="results" id="entityResults${i}"></div>
+        <div class="selected ${entity?'chosen':''}" id="entitySelected${i}">
+          ${entity?`<b>${esc(entity.label)}</b><span>${esc(entity.id)}</span>`:"No entity selected"}
+        </div>
+        ${quickActionHtml}
+      </div>
+    `;
+  }).join("");
+
+  for(let i=0;i<state.entities.length;i++){
+    $(`entitySearchBtn${i}`).onclick=()=>searchEntities(i);
+    $(`entitySearch${i}`).addEventListener("keydown",e=>{if(e.key==="Enter")searchEntities(i)});
+    if(state.entities[i]) $(`entitySearch${i}`).value=state.entities[i].label;
+  }
+  grid.querySelectorAll("[data-remove]").forEach(btn=>btn.onclick=()=>removeEntity(Number(btn.dataset.remove)));
+  grid.querySelectorAll("[data-clear]").forEach(btn=>btn.onclick=()=>clearSlot(Number(btn.dataset.clear)));
+  grid.querySelectorAll("[data-analyze-all]").forEach(btn=>btn.onclick=()=>analyze());
+
+  updateEntityCounter();
+  updateToggleBtn();
 }
+
+function clearSlot(index){
+  state.entities[index]=null;
+  renderEntityInputs();
+  updateEntityCounter();
+  if(state.result) renderActiveInvestigationBar(state.result);
+}
+
 function updateEntityCounter(){
- const count=state.entities.length, selected=selectedEntities().length;
- setText("entityCountLabel",`${count} ${count===1?"entity":"entities"}`);
- const btn=$("analyzeBtn");
- if(btn){btn.disabled=selected<2;btn.classList.toggle("ready",selected>=2);btn.innerHTML=selected<2?"Select 2+ entities <span>→</span>":`Analyze ${selected} entities <span>→</span>`;}
+  const count=state.entities.length, selected=selectedEntities().length;
+  setText("entityCountLabel",`${count} ${count===1?"entity":"entities"} (${selected} selected)`);
+  const btn=$("analyzeBtn");
+  if(btn){
+    btn.disabled=selected<2;
+    btn.classList.toggle("ready",selected>=2);
+    if(selected<2){
+      btn.innerHTML="Select 2+ entities <span>→</span>";
+    } else if(state.result && state.result.entities?.length && selected > state.result.entities.length){
+      btn.innerHTML=`Analyze all ${selected} entities (adds ${selected - state.result.entities.length}) <span>→</span>`;
+    } else if(state.result){
+      btn.innerHTML=`Re-analyze all ${selected} entities <span>→</span>`;
+    } else {
+      btn.innerHTML=`Analyze ${selected} entities <span>→</span>`;
+    }
+  }
 }
+
 function addEntity(){
- if(state.entities.length>=MAX_ENTITIES){showError(`You can add up to ${MAX_ENTITIES} entities per investigation.`);return}
- state.entities.push(null);
- renderEntityInputs();
- const input=$(`entitySearch${state.entities.length-1}`);
- input?.focus();
- showError("");
+  if(state.entities.length>=MAX_ENTITIES){showError(`You can add up to ${MAX_ENTITIES} entities per investigation.`);return}
+  $("entityGrid").classList.remove("collapsed");
+
+  const lastIdx=state.entities.length-1;
+  let targetSlot=state.entities.length;
+  if(state.entities.length>=2 && state.entities[lastIdx]===null){
+    targetSlot=lastIdx;
+  } else {
+    state.entities.push(null);
+  }
+
+  renderEntityInputs();
+  updateToggleBtn();
+  if(state.result) renderActiveInvestigationBar(state.result);
+
+  const input=$(`entitySearch${targetSlot}`);
+  if(input){
+    input.scrollIntoView({behavior:"smooth",block:"center"});
+    input.focus();
+  }
+
+  const prevCount=state.result?.entities?.length||0;
+  if(prevCount>=2){
+    showError(`Search and choose entity ${targetSlot+1}. It will be analyzed together with all ${prevCount} previous entities.`);
+    clearTimeout(window.__addEntityMsgTimer);
+    window.__addEntityMsgTimer=setTimeout(()=>{
+      if($("errorBox").textContent.includes("previous entities")) showError("");
+    },6000);
+  } else {
+    showError("");
+  }
 }
+
 function removeEntity(index){
- if(index<2)return;
- state.entities.splice(index,1);
- renderEntityInputs();
- showError("");
+  if(state.entities.length>2){
+    state.entities.splice(index,1);
+  } else {
+    state.entities[index]=null;
+  }
+  renderEntityInputs();
+  updateEntityCounter();
+  if(state.result) renderActiveInvestigationBar(state.result);
+  showError("");
 }
-async function searchEntities(slot){const q=$(`entitySearch${slot}`).value.trim();if(q.length<2){showError("Enter at least 2 characters to search.");return}showError("");const box=$(`entityResults${slot}`);box.innerHTML='<div class="loading">Resolving entity…</div>';try{const r=await fetch(`/api/search?q=${encodeURIComponent(q)}`),d=await r.json();if(!r.ok)throw Error(d.error||"Search failed");box.innerHTML=d.results.length?d.results.map(x=>`<button class="result-item" data-id="${esc(x.id)}"><span><b>${esc(x.label)}</b><small>${esc(x.description||"No description")}</small></span><em>${esc(x.id)}</em></button>`).join(""):'<div class="loading">No matches.</div>';box.querySelectorAll(".result-item").forEach(btn=>btn.onclick=()=>chooseEntity(slot,btn.dataset.id,d.results.find(x=>x.id===btn.dataset.id)));}catch(e){box.innerHTML="";showError(e.message)}}
-function chooseEntity(slot,id,item){if(!item){showError("Unable to select that entity. Please search again.");return}state.entities[slot]={id,label:item.label,description:item.description,url:item.url};const selected=$(`entitySelected${slot}`),results=$(`entityResults${slot}`);if(selected){selected.innerHTML=`<b>${esc(item.label)}</b><span>${esc(id)}</span>`;selected.classList.add("chosen")}if(results)results.innerHTML="";updateEntityCounter();}
+
+async function searchEntities(slot){
+  const q=$(`entitySearch${slot}`).value.trim();
+  if(q.length<2){showError("Enter at least 2 characters to search.");return}
+  showError("");
+  const box=$(`entityResults${slot}`);
+  box.innerHTML='<div class="loading">Resolving entity…</div>';
+  try{
+    const r=await fetch(`/api/search?q=${encodeURIComponent(q)}`),d=await r.json();
+    if(!r.ok)throw Error(d.error||"Search failed");
+    box.innerHTML=d.results.length?d.results.map(x=>`<button class="result-item" data-id="${esc(x.id)}"><span><b>${esc(x.label)}</b><small>${esc(x.description||"No description")}</small></span><em>${esc(x.id)}</em></button>`).join(""):'<div class="loading">No matches.</div>';
+    box.querySelectorAll(".result-item").forEach(btn=>btn.onclick=()=>chooseEntity(slot,btn.dataset.id,d.results.find(x=>x.id===btn.dataset.id)));
+  }catch(e){box.innerHTML="";showError(e.message)}
+}
+
+function chooseEntity(slot,id,item){
+  if(!item){showError("Unable to select that entity. Please search again.");return}
+  const duplicateIndex=state.entities.findIndex((e,idx)=>e&&e.id===id&&idx!==slot);
+  if(duplicateIndex!==-1){
+    showError(`"${item.label}" (${id}) is already selected as Entity ${duplicateIndex+1}.`);
+    return;
+  }
+  state.entities[slot]={id,label:item.label,description:item.description,url:item.url};
+  showError("");
+  renderEntityInputs();
+  updateEntityCounter();
+  if(state.result){
+    renderActiveInvestigationBar(state.result);
+    const btn=$("analyzeBtn");
+    if(btn){
+      btn.classList.add("pulse-highlight");
+      setTimeout(()=>btn.classList.remove("pulse-highlight"),1600);
+    }
+  }
+}
+
 function selectedEntities(){return state.entities.filter(Boolean)}
-async function analyze(){const entities=selectedEntities();if(entities.length<2){showError("Select at least 2 entities.");return}const btn=$("analyzeBtn");btn.disabled=true;btn.innerHTML='Analyzing <span class="spinner"></span>';showError("");setStatus("Collecting multi-source intelligence…");try{const r=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({entityIds:entities.map(e=>e.id)})});const d=await r.json();if(!r.ok)throw Error(d.error||"Analysis failed");state.result=d;renderResults(d);setStatus(`Analysis complete · ${d.pairCount} relationships`);$("entityGrid").classList.add("collapsed");}catch(e){showError(e.message);setStatus("Analysis failed",false)}finally{btn.disabled=false;updateEntityCounter()}}
+
+async function analyze(){
+  const entities=selectedEntities();
+  if(entities.length<2){showError("Select at least 2 entities.");return}
+  const btn=$("analyzeBtn");
+  btn.disabled=true;
+  btn.innerHTML=`Analyzing ${entities.length} entities <span class="spinner"></span>`;
+  showError("");
+  setStatus(`Analyzing ${entities.length} entities across multi-source intelligence…`);
+  try{
+    const r=await fetch("/api/analyze",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({entityIds:entities.map(e=>e.id)})
+    });
+    const d=await r.json();
+    if(!r.ok)throw Error(d.error||"Analysis failed");
+    state.result=d;
+    renderResults(d);
+    setStatus(`Analysis complete · ${d.entities.length} entities · ${d.pairCount} relationships`);
+    $("entityGrid").classList.add("collapsed");
+    renderActiveInvestigationBar(d);
+    renderEntityInputs();
+  }catch(e){
+    showError(e.message);
+    setStatus("Analysis failed",false);
+  }finally{
+    btn.disabled=false;
+    updateEntityCounter();
+    updateToggleBtn();
+  }
+}
 function renderSidebarAI(d){
  const panel=$("sidebarAIReport");
  if(!panel)return;
@@ -288,17 +496,22 @@ function exportServer(format){if(!requireResult())return;fetch(`/api/report/${fo
 function exportPDF(){exportServer('pdf')}
 function exportDOCX(){exportServer('word')}
 function clearEntities(){
- state.entities=Array(2).fill(null);state.result=null;state.graphPaused=false;state.graphShowAll=false;state.pan={x:0,y:0};
- renderEntityInputs();$("entityGrid").classList.remove('collapsed');
- $("profiles").innerHTML='<div class="empty">Your resolved entities will appear here.</div>';
- $("evidenceList").innerHTML='<div class="empty">Run an analysis to see evidence.</div>';
- $("graphSvg").innerHTML='';$("graphEmpty").style.display='grid';
- ["scoreValue","confidenceValue","structuredValue","newsValue","riskValue","pairCount","sourceCount"].forEach(id=>$(id).textContent='—');
+  state.entities=Array(2).fill(null);state.result=null;state.graphPaused=false;state.graphShowAll=false;state.pan={x:0,y:0};
+  $("entityGrid").classList.remove('collapsed');
+  renderActiveInvestigationBar(null);
+  renderEntityInputs();
+  updateEntityCounter();
+  updateToggleBtn();
+  $("profiles").innerHTML='<div class="empty">Your resolved entities will appear here.</div>';
+  $("evidenceList").innerHTML='<div class="empty">Run an analysis to see evidence.</div>';
+  $("graphSvg").innerHTML='';$("graphEmpty").style.display='grid';
+  ["scoreValue","confidenceValue","structuredValue","newsValue","riskValue","pairCount","sourceCount"].forEach(id=>$(id).textContent='—');
+  showError("");
 }
 function applyTheme(theme){document.body.classList.toggle("light",theme==="light");localStorage.setItem("darktrace-theme",theme);const icon=document.querySelector(".theme-island .island-icon");if(icon)icon.textContent=theme==="light"?"☀":"☾";const t=$("themeToggle");if(t)t.title=theme==="light"?"Switch to dark mode":"Switch to light mode"}
 function initTheme(){const saved=localStorage.getItem("darktrace-theme")||"dark";applyTheme(saved);const t=$("themeToggle");if(t){t.onclick=()=>{const current=document.body.classList.contains("light")?"light":"dark";applyTheme(current==="light"?"dark":"light")}}}
 
-function bind(){initTheme();renderEntityInputs();$("addEntity").onclick=addEntity;$("toggleEntities").onclick=()=>$("entityGrid").classList.toggle('collapsed');$("analyzeBtn").onclick=analyze;$("clearEntities").onclick=clearEntities;$("verifySecurity").onclick=verifySecurity;$("initializeLedger").onclick=initializeLedger;$("pauseGraph").onclick=()=>{state.graphPaused=!state.graphPaused;if(state.result)renderGraph(state.result)};$("focusGraph").onclick=()=>{state.graphShowAll=false;if(state.result)renderGraph(state.result)};$("showAllGraph").onclick=()=>{state.graphShowAll=true;if(state.result)renderGraph(state.result)};$("scoreToggle").onclick=()=>{state.showScores=!state.showScores;$("scoreToggle").classList.toggle('active',state.showScores);if(state.result)renderGraph(state.result)};$("zoomIn").onclick=()=>{state.scale=Math.min(2,state.scale+.15);if(state.result)renderGraph(state.result)};$("zoomOut").onclick=()=>{state.scale=Math.max(.6,state.scale-.15);if(state.result)renderGraph(state.result)};$("resetGraph").onclick=()=>{state.scale=1;state.pan={x:0,y:0};state.graphPaused=false;if(state.result)renderGraph(state.result)};$("fullscreenGraph").onclick=()=>{$("graphPanel").requestFullscreen?.()};$("graphSearch").oninput=e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('.node').forEach(n=>n.classList.toggle('dim',q&&!n.textContent.toLowerCase().includes(q)))};$("exportJSON").onclick=exportJSON;$("exportCSV").onclick=exportCSV;$("exportTXT").onclick=exportTXT;$("exportMD").onclick=exportMD;$("exportHTML").onclick=exportHTML;$("exportPDF").onclick=exportPDF;$("exportDOCX").onclick=exportDOCX;
+function bind(){initTheme();renderEntityInputs();updateToggleBtn();$("addEntity").onclick=addEntity;$("toggleEntities").onclick=()=>{ $("entityGrid").classList.toggle('collapsed'); updateToggleBtn(); if(state.result) renderActiveInvestigationBar(state.result); };$("analyzeBtn").onclick=analyze;$("clearEntities").onclick=clearEntities;$("verifySecurity").onclick=verifySecurity;$("initializeLedger").onclick=initializeLedger;$("pauseGraph").onclick=()=>{state.graphPaused=!state.graphPaused;if(state.result)renderGraph(state.result)};$("focusGraph").onclick=()=>{state.graphShowAll=false;if(state.result)renderGraph(state.result)};$("showAllGraph").onclick=()=>{state.graphShowAll=true;if(state.result)renderGraph(state.result)};$("scoreToggle").onclick=()=>{state.showScores=!state.showScores;$("scoreToggle").classList.toggle('active',state.showScores);if(state.result)renderGraph(state.result)};$("zoomIn").onclick=()=>{state.scale=Math.min(2,state.scale+.15);if(state.result)renderGraph(state.result)};$("zoomOut").onclick=()=>{state.scale=Math.max(.6,state.scale-.15);if(state.result)renderGraph(state.result)};$("resetGraph").onclick=()=>{state.scale=1;state.pan={x:0,y:0};state.graphPaused=false;if(state.result)renderGraph(state.result)};$("fullscreenGraph").onclick=()=>{$("graphPanel").requestFullscreen?.()};$("graphSearch").oninput=e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('.node').forEach(n=>n.classList.toggle('dim',q&&!n.textContent.toLowerCase().includes(q)))};$("exportJSON").onclick=exportJSON;$("exportCSV").onclick=exportCSV;$("exportTXT").onclick=exportTXT;$("exportMD").onclick=exportMD;$("exportHTML").onclick=exportHTML;$("exportPDF").onclick=exportPDF;$("exportDOCX").onclick=exportDOCX;
 }
 
 document.addEventListener('DOMContentLoaded',()=>{bind();initNotificationCenter();});

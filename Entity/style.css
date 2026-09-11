@@ -471,3 +471,226 @@ body.light .pwa-install-dismiss:hover { color: #172033; background: rgba(0,0,0,.
     padding-top: max(14px, env(safe-area-inset-top));
   }
 }
+
+/* =================================================================
+   MULTI-ENTITY PERSISTENT INVESTIGATION STYLES
+   ================================================================= */
+.active-investigation-bar {
+  margin-bottom: 12px;
+  padding: 11px 14px;
+  border: 1px solid #1f3d57;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(8, 20, 32, 0.95), rgba(14, 28, 48, 0.95));
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 20px rgba(85,221,255,0.08);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.active-investigation-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.active-investigation-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+.active-investigation-entities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.active-entity-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #10263b;
+  border: 1px solid #234768;
+  color: #edf6ff;
+}
+.active-entity-pill small {
+  color: var(--cyan);
+  font-size: 8px;
+  font-family: ui-monospace, monospace;
+}
+.active-investigation-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.add-to-investigation-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #45e0aa88;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #0d382d, #142a42);
+  color: #45e0aa;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.add-to-investigation-btn:hover {
+  border-color: #45e0aa;
+  box-shadow: 0 0 16px rgba(69, 224, 170, 0.25);
+  transform: translateY(-1px);
+}
+.bar-toggle-btn {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #2b4057;
+  border-radius: 7px;
+  background: #0e1b2a;
+  color: #a8bfd2;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.bar-toggle-btn:hover {
+  border-color: var(--cyan);
+  color: #fff;
+}
+
+.entity-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding-right: 28px;
+}
+.entity-box-head label {
+  margin-bottom: 0 !important;
+  font-size: 9px;
+}
+.status-tag {
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.status-tag.analyzed {
+  background: #092c20;
+  border: 1px solid #2c7255;
+  color: #45e0aa;
+}
+.status-tag.new {
+  background: #352312;
+  border: 1px solid #7d5423;
+  color: var(--amber);
+}
+.entity-box.new-slot {
+  border-color: #3b5a7a;
+  background: linear-gradient(145deg, #0a1726, #0e1322);
+  box-shadow: 0 0 18px rgba(85,221,255,0.08);
+}
+.slot-analyze-row {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed #20354b;
+}
+.slot-analyze-btn {
+  width: 100%;
+  height: 30px;
+  border: 1px solid #45e0aa88;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #103a4b, #194436);
+  color: #a8ffd9;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .2s;
+}
+.slot-analyze-btn:hover {
+  border-color: #45e0aa;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(69,224,170,0.3);
+}
+.remove-entity {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #364d66;
+  background: #111e2e;
+  color: #8fa6bd;
+  font-size: 12px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all .15s ease;
+  z-index: 5;
+}
+.remove-entity:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: #281119;
+}
+.remove-entity.clear-only:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: #261f10;
+}
+.pulse-highlight {
+  animation: pulseButton 1s ease-in-out 2;
+}
+@keyframes pulseButton {
+  0%, 100% { box-shadow: 0 0 0 rgba(85,221,255,0); }
+  50% { box-shadow: 0 0 25px rgba(85,221,255,0.6); transform: scale(1.02); }
+}
+
+/* Light mode overrides */
+body.light .active-investigation-bar {
+  background: linear-gradient(135deg, rgba(240, 246, 255, 0.96), rgba(230, 240, 255, 0.96));
+  border-color: rgba(8, 126, 164, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+body.light .active-entity-pill {
+  background: #e1ecf8;
+  border-color: #b0cbe6;
+  color: #1a3048;
+}
+body.light .active-entity-pill small {
+  color: #087ea4;
+}
+body.light .add-to-investigation-btn {
+  background: linear-gradient(135deg, #e6f9f3, #d4f4e9);
+  color: #0d7553;
+  border-color: #0d755366;
+}
+body.light .bar-toggle-btn {
+  background: #f0f4fa;
+  border-color: #cbd8e6;
+  color: #44596e;
+}
+body.light .entity-box.new-slot {
+  background: #f4f8fd;
+  border-color: #92b8de;
+}
+body.light .remove-entity {
+  background: #eef4fb;
+  border-color: #c0d3e6;
+  color: #556c82;
+}
+
