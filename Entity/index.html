@@ -1,4 +1,25 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DarkTrace — Threat Intelligence Platform</title><link rel="stylesheet" href="style.css"></head><body><div class="app">
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DarkTrace — Threat Intelligence Platform</title><link rel="stylesheet" href="style.css"></head><body>
+<!-- Mobile navigation bar (visible on screens ≤1100px) -->
+<nav class="mobile-nav-bar" id="mobileNavBar" aria-label="Mobile navigation">
+  <div class="brand"><div class="logo">⌁</div><div><strong>DarkTrace</strong><span>Threat Intelligence</span></div></div>
+  <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobileDrawer">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+<!-- Dark overlay behind drawer -->
+<div class="mobile-drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
+<!-- Slide-in drawer -->
+<aside class="mobile-drawer" id="mobileDrawer" aria-label="Site navigation">
+  <nav>
+    <a class="active" href="#overview" onclick="closeDrawer()">◈ Overview</a>
+    <a href="#analyzer" onclick="closeDrawer()">◎ Analyzer</a>
+    <a href="#graph" onclick="closeDrawer()">⌁ Threat Graph</a>
+    <a href="#evidence" onclick="closeDrawer()">◌ Evidence</a>
+    <a href="#security" onclick="closeDrawer()">⬢ Blockchain Audit</a>
+  </nav>
+  <div class="case"><small>LIVE SOURCE MODE</small><strong>MITRE · CISA · Wikidata · GDELT</strong><div>Multi-source public intelligence with source traceability.</div></div>
+</aside>
+<div class="app">
 <aside><div class="brand"><div class="logo">⌁</div><div><strong>DarkTrace</strong><span>Threat Intelligence</span></div></div><nav><a class="active" href="#overview">◈ Overview</a><a href="#analyzer">◎ Analyzer</a><a href="#graph">⌁ Threat Graph</a><a href="#evidence">◌ Evidence</a><a href="#security">⬢ Blockchain Audit</a></nav>
 <div class="sidebar-ai-report" id="sidebarAIReport">
 <div class="sidebar-ai-head"><span>✦ AI ANALYSIS REPORT</span><span class="ai-live">LIVE</span></div>
@@ -32,4 +53,19 @@
 <div class="hsn-icon">⚠</div><div class="hsn-content"><strong>High Relationship Detected</strong>
 <span id="highScoreMessage">A relationship score is above 65%.</span></div>
 <button id="closeHighScore" class="hsn-close" aria-label="Close notification">×</button></div>
+<script>
+// -- Mobile hamburger drawer --
+(function(){
+  var btn=document.getElementById('hamburger');
+  var drawer=document.getElementById('mobileDrawer');
+  var overlay=document.getElementById('drawerOverlay');
+  if(!btn||!drawer||!overlay)return;
+  function openDrawer(){btn.classList.add('open');drawer.classList.add('open');overlay.classList.add('open');btn.setAttribute('aria-expanded','true');document.body.style.overflow='hidden';}
+  function closeDrawer(){btn.classList.remove('open');drawer.classList.remove('open');overlay.classList.remove('open');btn.setAttribute('aria-expanded','false');document.body.style.overflow='';}
+  window.closeDrawer=closeDrawer;
+  btn.addEventListener('click',function(){btn.classList.contains('open')?closeDrawer():openDrawer();});
+  overlay.addEventListener('click',closeDrawer);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDrawer();});
+})();
+</script>
 </body></html>
