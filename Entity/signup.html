@@ -153,7 +153,15 @@
         <small class="hint">Use 3–31 letters, numbers, dots, underscores or hyphens.</small>
 
         <label for="password">Password</label>
-        <input id="password" type="password" autocomplete="new-password" placeholder="Create password" required>
+        <div class="password-wrap">
+          <input id="password" type="password" autocomplete="new-password" placeholder="Create password" required>
+          <button type="button" class="eye-toggle-btn" id="togglePasswordSignUp" aria-label="Toggle password visibility" title="Show/Hide password">
+            <svg id="eyeIconSignUp" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25"></circle>
+            </svg>
+          </button>
+        </div>
         
         <div class="pwd-requirements" id="pwdReqs">
           <div class="pwd-req" id="req-len">6+ characters</div>
