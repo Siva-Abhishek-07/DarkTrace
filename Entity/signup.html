@@ -60,6 +60,62 @@
     .pwd-req:not(.valid)::before {
       content: '○';
     }
+
+    /* Password Wrap & Eye Toggle */
+    .password-wrap {
+      position: relative !important;
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      border: 1px solid #2b425b !important;
+      border-radius: 8px !important;
+      background: #07101a !important;
+      overflow: hidden !important;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.3) !important;
+    }
+    .password-wrap:focus-within {
+      border-color: #55ddff !important;
+      box-shadow: 0 0 16px rgba(85,221,255,0.22), inset 0 2px 4px rgba(0,0,0,0.3) !important;
+    }
+    .password-wrap input {
+      border: 0 !important;
+      background: transparent !important;
+      flex: 1 !important;
+      min-width: 0 !important;
+      padding: 0 46px 0 12px !important;
+      color: #edf6ff !important;
+      font-size: 15px !important;
+    }
+    .eye-toggle-btn {
+      position: absolute !important;
+      right: 0 !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 46px !important;
+      height: 100% !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      background: transparent !important;
+      border: none !important;
+      color: #55ddff !important;
+      cursor: pointer !important;
+      padding: 0 !important;
+      z-index: 10 !important;
+      transition: color .2s, filter .2s;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+    .eye-toggle-btn:hover {
+      color: #ffffff !important;
+      filter: drop-shadow(0 0 8px rgba(85,221,255,0.85)) !important;
+    }
+    .eye-toggle-btn svg {
+      width: 22px !important;
+      height: 22px !important;
+      display: block !important;
+      stroke: currentColor !important;
+      stroke-width: 2.2 !important;
+    }
   </style>
 </head>
 <body>
@@ -111,9 +167,9 @@
         <div class="password-wrap">
           <input id="confirm" type="password" autocomplete="new-password" placeholder="Re-enter password" required>
           <button type="button" class="eye-toggle-btn" id="togglePasswordConfirm" aria-label="Toggle confirm password visibility" title="Show/Hide confirm password">
-            <svg id="eyeIconConfirm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg id="eyeIconConfirm" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-              <circle cx="12" cy="12" r="3"></circle>
+              <circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25"></circle>
             </svg>
           </button>
         </div>
@@ -141,8 +197,8 @@
     });
 
     // Toggle confirm password visibility
-    const eyeSvgOpen = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
-    const eyeSvgClosed = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+    const eyeSvgOpen = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3.2" fill="currentColor" fill-opacity="0.25"></circle>';
+    const eyeSvgClosed = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23" stroke-width="2.5"></line>';
 
     $('togglePasswordConfirm').onclick = () => {
       const conf = $('confirm');

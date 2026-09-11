@@ -1,15 +1,17 @@
 /* ============================================================
    DarkTrace — Service Worker (sw.js)
-   Network-first strategy for API calls; cache-first for assets.
+   Network-first strategy for HTML and API; cache fallback for offline.
    ============================================================ */
 
-const CACHE_NAME = 'darktrace-v1';
+const CACHE_NAME = 'darktrace-v3';
 
 // Assets to pre-cache on install
 const PRE_CACHE = [
   '/',
   '/index.html',
+  '/signin',
   '/signin.html',
+  '/signup',
   '/signup.html',
   '/style.css',
   '/auth.css',
@@ -37,12 +39,12 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// ── Fetch: network-first for API; cache-first for static ──────
+// ── Fetch: Network-first for pages and API; cache fallback ────
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Always go network-first for API routes
+  // API calls: Network only (with offline fallback JSON)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request).catch(() =>
@@ -55,17 +57,28 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Cache-first for everything else (static assets / HTML pages)
+  // HTML pages & CSS & JS: Network-first so updates are immediately visible
+  if (request.mode === 'navigate' || request.destination === 'document' || request.destination === 'style' || request.destination === 'script') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok && request.method === 'GET' && url.origin === self.location.origin) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Other static assets (images, icons): Cache-first with network fallback
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached;
       return fetch(request).then(response => {
-        // Only cache successful same-origin GET responses
-        if (
-          response.ok &&
-          request.method === 'GET' &&
-          url.origin === self.location.origin
-        ) {
+        if (response.ok && request.method === 'GET' && url.origin === self.location.origin) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
         }

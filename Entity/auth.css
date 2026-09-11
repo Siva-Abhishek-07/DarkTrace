@@ -148,43 +148,58 @@ label {
   position: relative;
   display: flex;
   align-items: center;
-  border: 1px solid #263b52;
+  width: 100%;
+  border: 1px solid #2b425b;
   border-radius: 8px;
   background: #07101a;
   overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
 }
-.password-wrap:focus-within { border-color: #55ddff88; }
+.password-wrap:focus-within {
+  border-color: #55ddff;
+  box-shadow: 0 0 16px rgba(85,221,255,0.22), inset 0 2px 4px rgba(0,0,0,0.3);
+}
 .password-wrap input {
   border: 0 !important;
   background: transparent !important;
   flex: 1;
   min-width: 0;
-  padding-right: 42px !important;
+  padding: 0 46px 0 12px !important;
+  color: #edf6ff !important;
+  font-size: 15px !important;
 }
 .eye-toggle-btn {
   position: absolute;
   right: 0;
   top: 0;
   bottom: 0;
-  width: 44px;
+  width: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;
   border: none;
-  color: #7b93ab;
+  color: #55ddff; /* Brilliant, high-contrast cyan */
   cursor: pointer;
   padding: 0;
-  transition: color .2s, transform .1s;
+  z-index: 10;
+  transition: color .2s, transform .15s, filter .2s;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
-.eye-toggle-btn:hover { color: var(--cyan); }
-.eye-toggle-btn:active { transform: scale(0.92); }
+.eye-toggle-btn:hover {
+  color: #ffffff;
+  filter: drop-shadow(0 0 8px rgba(85,221,255,0.85));
+}
+.eye-toggle-btn:active {
+  transform: scale(0.9);
+}
 .eye-toggle-btn svg {
-  width: 19px;
-  height: 19px;
+  width: 22px;
+  height: 22px;
   display: block;
+  stroke: currentColor;
+  stroke-width: 2.2;
 }
 
 /* Generic input */
