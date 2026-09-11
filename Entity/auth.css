@@ -143,6 +143,50 @@ label {
   white-space: nowrap;
 }
 
+/* Password with toggle eye */
+.password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid #263b52;
+  border-radius: 8px;
+  background: #07101a;
+  overflow: hidden;
+}
+.password-wrap:focus-within { border-color: #55ddff88; }
+.password-wrap input {
+  border: 0 !important;
+  background: transparent !important;
+  flex: 1;
+  min-width: 0;
+  padding-right: 42px !important;
+}
+.eye-toggle-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #7b93ab;
+  cursor: pointer;
+  padding: 0;
+  transition: color .2s, transform .1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.eye-toggle-btn:hover { color: var(--cyan); }
+.eye-toggle-btn:active { transform: scale(0.92); }
+.eye-toggle-btn svg {
+  width: 19px;
+  height: 19px;
+  display: block;
+}
+
 /* Generic input */
 input {
   width: 100%;
