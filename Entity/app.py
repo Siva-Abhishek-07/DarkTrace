@@ -742,6 +742,39 @@ def risk_level(score: int, confidence: float) -> tuple[str, str]:
     return "LOW", "Little source-backed relationship signal"
 
 
+
+# ---------------------------------------------------------------------------
+# PWA static files — must be served without auth at root scope
+# ---------------------------------------------------------------------------
+@app.get("/sw.js")
+def service_worker():
+    """Service worker must be served with correct MIME type and no-cache headers."""
+    resp = make_response(send_from_directory(ROOT, "sw.js"))
+    resp.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
+
+
+@app.get("/manifest.json")
+def manifest():
+    """Web App Manifest — served without auth."""
+    resp = make_response(send_from_directory(ROOT, "manifest.json"))
+    resp.headers["Content-Type"] = "application/manifest+json; charset=utf-8"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.get("/icon-192.png")
+def icon_192():
+    return send_from_directory(ROOT, "icon-192.png")
+
+
+@app.get("/icon-512.png")
+def icon_512():
+    return send_from_directory(ROOT, "icon-512.png")
+
+
 @app.get("/")
 @login_required
 def index():

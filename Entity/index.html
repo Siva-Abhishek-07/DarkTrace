@@ -1,4 +1,29 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DarkTrace — Threat Intelligence Platform</title><link rel="stylesheet" href="style.css"></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DarkTrace — Threat Intelligence Platform</title>
+
+  <!-- PWA: Web App Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- PWA: Theme color (browser toolbar) -->
+  <meta name="theme-color" content="#060a12">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DarkTrace">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+
+  <!-- SEO -->
+  <meta name="description" content="Multi-source entity threat intelligence and relationship analysis platform. MITRE · CISA · Wikidata · GDELT.">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 <!-- Mobile navigation bar (visible on screens ≤1100px) -->
 <nav class="mobile-nav-bar" id="mobileNavBar" aria-label="Mobile navigation">
   <div class="brand"><div class="logo">⌁</div><div><strong>DarkTrace</strong><span>Threat Intelligence</span></div></div>
@@ -66,6 +91,69 @@
   btn.addEventListener('click',function(){btn.classList.contains('open')?closeDrawer():openDrawer();});
   overlay.addEventListener('click',closeDrawer);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeDrawer();});
+})();
+</script>
+
+<!-- PWA: Install prompt banner -->
+<div id="pwaInstallBanner" class="pwa-install-banner" role="banner" hidden>
+  <div class="pwa-install-icon">⚡</div>
+  <div class="pwa-install-copy">
+    <strong>Install DarkTrace</strong>
+    <span>Add to home screen for the full app experience</span>
+  </div>
+  <button id="pwaInstallBtn" class="pwa-install-action">Install</button>
+  <button id="pwaInstallDismiss" class="pwa-install-dismiss" aria-label="Dismiss">✕</button>
+</div>
+
+<script>
+// -- Service Worker registration --
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').catch(function(e) {
+      console.warn('SW registration failed:', e);
+    });
+  });
+}
+
+// -- PWA Install Prompt --
+(function() {
+  var deferredPrompt = null;
+  var banner = document.getElementById('pwaInstallBanner');
+  var installBtn = document.getElementById('pwaInstallBtn');
+  var dismissBtn = document.getElementById('pwaInstallDismiss');
+
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show our custom banner
+    if (banner) {
+      banner.hidden = false;
+      banner.classList.add('show');
+    }
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener('click', function() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(result) {
+        deferredPrompt = null;
+        if (banner) { banner.hidden = true; banner.classList.remove('show'); }
+      });
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', function() {
+      if (banner) { banner.hidden = true; banner.classList.remove('show'); }
+    });
+  }
+
+  // Hide banner if already installed
+  window.addEventListener('appinstalled', function() {
+    if (banner) { banner.hidden = true; banner.classList.remove('show'); }
+    deferredPrompt = null;
+  });
 })();
 </script>
 </body></html>

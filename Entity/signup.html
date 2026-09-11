@@ -1,5 +1,26 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DarkTrace — Sign Up</title><link rel="stylesheet" href="auth.css"></head>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DarkTrace — Sign Up</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#060a12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="DarkTrace">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <meta name="description" content="Create a DarkTrace Threat Intelligence account.">
+
+  <link rel="stylesheet" href="auth.css">
+</head>
+
 <body><div class="auth-shell"><div class="auth-card"><div class="brand"><div class="logo">⌁</div><div><strong>DarkTrace</strong><span>Threat Intelligence</span></div></div><div class="eyebrow">NEW USER</div><h1>Create your account</h1><p class="intro">Register for a DarkTrace account. Every username uses the @darktrace.in domain.</p>
 <form id="form"><label>Username</label><div class="username-wrap"><input id="username" autocomplete="username" placeholder="yourname" required><span>@darktrace.in</span></div><small class="hint">Use 3–31 letters, numbers, dots, underscores or hyphens.</small><label>Password</label><input id="password" type="password" autocomplete="new-password" minlength="6" placeholder="Min 6: Aa1!" required><small class="hint">Minimum 6 characters: include 1 lowercase, 1 uppercase, 1 number, and 1 special character.</small><label>Confirm password</label><input id="confirm" type="password" autocomplete="new-password" placeholder="Re-enter password" required><button class="primary" id="btn" type="submit">Create account</button><div id="msg" class="message" role="alert"></div></form>
 <div class="auth-links">Already registered? <a href="/signin">Sign in</a></div><div class="security-note">🔐 Your password is stored as a secure hash. Duplicate usernames cannot be registered.</div></div></div>
-<script>const $=id=>document.getElementById(id);$('form').onsubmit=async e=>{e.preventDefault();const p=$('password').value;if(!/[a-z]/.test(p)||!/[A-Z]/.test(p)||!/\d/.test(p)||!/[^A-Za-z0-9]/.test(p)||p.length<6){$('msg').textContent='Password must be at least 6 characters and include one lowercase letter, one uppercase letter, one number, and one special character.';$('msg').className='message error';return}if(p!==$('confirm').value){$('msg').textContent='Passwords do not match.';$('msg').className='message error';return}$('btn').disabled=true;$('msg').textContent='Creating account…';$('msg').className='message';try{const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});const d=await r.json();if(!r.ok)throw Error(d.error||'Registration failed');$('msg').textContent='Account created. Redirecting to sign in…';$('msg').className='message success';setTimeout(()=>location.href='/signin',700)}catch(err){$('msg').textContent=err.message;$('msg').className='message error'}finally{$('btn').disabled=false}};</script></body></html>
+<script>const $=id=>document.getElementById(id);$('form').onsubmit=async e=>{e.preventDefault();const p=$('password').value;if(!/[a-z]/.test(p)||!/[A-Z]/.test(p)||!/\d/.test(p)||!/[^A-Za-z0-9]/.test(p)||p.length<6){$('msg').textContent='Password must be at least 6 characters and include one lowercase letter, one uppercase letter, one number, and one special character.';$('msg').className='message error';return}if(p!==$('confirm').value){$('msg').textContent='Passwords do not match.';$('msg').className='message error';return}$('btn').disabled=true;$('msg').textContent='Creating account…';$('msg').className='message';try{const r=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('username').value.trim(),password:$('password').value})});const d=await r.json();if(!r.ok)throw Error(d.error||'Registration failed');$('msg').textContent='Account created. Redirecting to sign in…';$('msg').className='message success';setTimeout(()=>location.href='/signin',700)}catch(err){$('msg').textContent=err.message;$('msg').className='message error'}finally{$('btn').disabled=false}};</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}</script>
+</body></html>
