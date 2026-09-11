@@ -1,4 +1,846 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DarkTrace — Admin Console</title><link rel="stylesheet" href="auth.css"><style>
-body{display:block;padding:0}.admin-shell{width:min(1180px,calc(100% - 32px));margin:32px auto}.admin-head{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:22px}.admin-head h1{margin:4px 0;font-size:30px}.admin-head p{margin:0;color:var(--muted)}.actions{display:flex;gap:8px}.actions a,.actions button{border:1px solid #263b52;background:#0b1723;color:#dff4ff;border-radius:8px;padding:10px 13px;text-decoration:none;cursor:pointer}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.stat{background:#0d1724;border:1px solid var(--line);border-radius:14px;padding:18px}.stat small{color:var(--muted)}.stat b{display:block;font-size:25px;margin-top:4px}.panel{background:#0d1724;border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;overflow:auto}.panel h2{margin:0 0 12px;font-size:17px}.table{width:100%;border-collapse:collapse;min-width:720px}.table th,.table td{padding:10px;border-bottom:1px solid #203047;text-align:left}.table th{color:#8fa8bd;font-size:10px;text-transform:uppercase;letter-spacing:1px}.role-admin{color:#9c7cff;font-weight:800}.role-user{color:#45e0aa}.notice{color:#8fa8bd;font-size:11px}.error{color:#ff657c}.refresh{float:right}@media(max-width:700px){.stats{grid-template-columns:1fr}.admin-head{align-items:flex-start;flex-direction:column}}
-</style></head><body><div class="admin-shell"><div class="admin-head"><div><div class="eyebrow">ADMINISTRATOR CONSOLE</div><h1>DarkTrace User Management</h1><p>View registered accounts and investigation activity. Passwords are never exposed.</p></div><div class="actions"><a href="/">Dashboard</a><button id="logout">Logout</button></div></div><div class="stats"><div class="stat"><small>REGISTERED USERS</small><b id="users">—</b></div><div class="stat"><small>INVESTIGATIONS</small><b id="investigations">—</b></div><div class="stat"><small>ADMIN ACCOUNTS</small><b id="admins">—</b></div></div><section class="panel"><button class="actions refresh" id="refresh">Refresh</button><h2>All registered users</h2><table class="table"><thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Created</th><th>Last login</th><th>Investigations</th><th>Last investigation</th></tr></thead><tbody id="userRows"><tr><td colspan="7">Loading…</td></tr></tbody></table></section><section class="panel"><h2>Recent investigation activity</h2><table class="table"><thead><tr><th>User</th><th>Entities</th><th>Pairs</th><th>Score</th><th>Risk</th><th>Time</th></tr></thead><tbody id="invRows"><tr><td colspan="6">Loading…</td></tr></tbody></table></section><div class="notice">Admin access is role-protected on the server. User passwords and password hashes are not returned to this page.</div></div>
-<script>const $=id=>document.getElementById(id);const fmt=v=>v?new Date(v).toLocaleString():'—';async function load(){try{const [u,i]=await Promise.all([fetch('/api/admin/users'),fetch('/api/admin/investigations')]);if(u.status===401||u.status===403){location.href='/signin';return}const ud=await u.json(),id=await i.json();$('users').textContent=ud.users.length;$('admins').textContent=ud.users.filter(x=>x.role==='admin').length;$('investigations').textContent=id.investigations.length;$('userRows').innerHTML=ud.users.map(x=>`<tr><td>${x.id}</td><td>${x.username}</td><td class="role-${x.role}">${x.role}</td><td>${fmt(x.created_at)}</td><td>${fmt(x.last_login)}</td><td>${x.investigation_count}</td><td>${fmt(x.last_investigation)}</td></tr>`).join('')||'<tr><td colspan="7">No users.</td></tr>';$('invRows').innerHTML=id.investigations.map(x=>`<tr><td>${x.username}</td><td>${Array.isArray(x.entity_ids)?x.entity_ids.join(', '):x.entity_ids}</td><td>${x.pair_count}</td><td>${x.relationship_score}%</td><td>${x.risk_level}</td><td>${fmt(x.created_at)}</td></tr>`).join('')||'<tr><td colspan="6">No investigations yet.</td></tr>'}catch(e){$('userRows').innerHTML=`<tr><td colspan="7" class="error">${e.message}</td></tr>`}}$('refresh').onclick=load;$('logout').onclick=async()=>{await fetch('/api/auth/logout',{method:'POST'});location.href='/signin'};load();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>DarkTrace — Admin Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ── CSS Variables ── */
+    :root {
+      --bg: #060a12;
+      --panel: #0d1724;
+      --line: #203047;
+      --text: #edf6ff;
+      --muted: #8295aa;
+      --cyan: #55ddff;
+      --purple: #9c7cff;
+      --green: #45e0aa;
+      --amber: #ffc857;
+      --red: #ff657c;
+      --shadow: 0 18px 55px #0009;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 80% -10%, #183b57 0, transparent 30%),
+        radial-gradient(circle at 10% 20%, #182347 0, transparent 30%),
+        var(--bg);
+      color: var(--text);
+      font: 14px/1.5 Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+    button, input, select { font: inherit; cursor: pointer; }
+
+    /* ── Top Nav Bar ── */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 58px;
+      background: #050b13ee;
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+      gap: 12px;
+    }
+    .top-bar-brand { display: flex; align-items: center; gap: 10px; }
+    .top-bar-logo {
+      width: 36px; height: 36px;
+      display: grid; place-items: center;
+      border: 1px solid #55ddff55;
+      border-radius: 10px;
+      color: var(--cyan);
+      font-size: 20px;
+      background: #55ddff0b;
+      flex-shrink: 0;
+    }
+    .top-bar-brand strong { font-size: 16px; }
+    .top-bar-brand span {
+      display: block;
+      color: var(--muted);
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .top-bar-badge {
+      padding: 3px 8px;
+      border: 1px solid #9c7cff55;
+      border-radius: 99px;
+      background: #9c7cff12;
+      color: var(--purple);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .top-bar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .top-bar-actions a,
+    .top-bar-actions button {
+      height: 36px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0e1b2a;
+      color: #a8bfd2;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .top-bar-actions a:hover,
+    .top-bar-actions button:hover { border-color: var(--cyan); color: #fff; }
+    .btn-danger { border-color: #ff657c44 !important; color: var(--red) !important; background: #ff657c0a !important; }
+    .btn-danger:hover { border-color: var(--red) !important; background: #ff657c18 !important; color: #fff !important; }
+
+    /* ── Shell ── */
+    .shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    /* ── Page Header ── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .eyebrow {
+      color: var(--cyan);
+      font-size: 9px;
+      font-weight: 900;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .page-header h1 { font-size: clamp(20px, 4vw, 28px); margin: 0; }
+    .page-header p { color: var(--muted); margin: 4px 0 0; font-size: 12px; }
+    .refresh-btn {
+      height: 38px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0e1b2a;
+      color: #a8bfd2;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex; align-items: center; gap: 7px;
+      flex-shrink: 0;
+      transition: border-color .2s, color .2s;
+    }
+    .refresh-btn:hover { border-color: var(--cyan); color: #fff; }
+    .refresh-btn.spinning .spin-icon { animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin-icon { display: inline-block; }
+
+    /* ── Stat Cards ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: linear-gradient(145deg, #0d1724ed, #0b111cdd);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .stat-card:nth-child(1)::before { background: var(--cyan); }
+    .stat-card:nth-child(2)::before { background: var(--purple); }
+    .stat-card:nth-child(3)::before { background: var(--green); }
+    .stat-card:nth-child(4)::before { background: var(--amber); }
+    .stat-label {
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .stat-value {
+      font-size: 30px;
+      font-weight: 900;
+      margin: 6px 0 2px;
+      color: #edf6ff;
+    }
+    .stat-sub { font-size: 9px; color: #60778f; }
+
+    /* ── Search bar ── */
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-input-wrap {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+    .search-input-wrap input {
+      width: 100%;
+      height: 40px;
+      border: 1px solid #263b52;
+      border-radius: 9px;
+      background: #07101a;
+      color: #eaf5ff;
+      padding: 0 12px 0 36px;
+      outline: none;
+      font-size: 13px;
+      transition: border-color .2s;
+    }
+    .search-input-wrap input::placeholder { color: var(--muted); }
+    .search-input-wrap input:focus { border-color: #55ddff88; }
+    .search-icon {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+      pointer-events: none;
+    }
+    .filter-select {
+      height: 40px;
+      padding: 0 10px;
+      border: 1px solid #263b52;
+      border-radius: 9px;
+      background: #07101a;
+      color: #a8bfd2;
+      outline: none;
+      font-size: 12px;
+      min-width: 120px;
+    }
+
+    /* ── Panel ── */
+    .panel {
+      background: linear-gradient(145deg, #0d1724ed, #0b111cdd);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #0e1926aa;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .panel-head h2 { font-size: 13px; margin: 0; }
+    .panel-head-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 99px;
+      font-size: 9px;
+      font-weight: 800;
+      border: 1px solid;
+    }
+    .badge-cyan { border-color: #55ddff44; background: #55ddff0d; color: var(--cyan); }
+    .badge-purple { border-color: #9c7cff44; background: #9c7cff0d; color: var(--purple); }
+
+    /* ── Table ── */
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 600px;
+    }
+    .data-table th {
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 9px;
+      font-weight: 900;
+      color: var(--muted);
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      background: #08121d;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: 11px 14px;
+      border-bottom: 1px solid #17283a;
+      vertical-align: middle;
+    }
+    .data-table tr:last-child td { border-bottom: 0; }
+    .data-table tbody tr {
+      transition: background .15s;
+    }
+    .data-table tbody tr:hover { background: #0f1e2e; }
+
+    /* ── User cell ── */
+    .user-cell { display: flex; align-items: center; gap: 10px; }
+    .user-avatar {
+      width: 32px; height: 32px;
+      border-radius: 9px;
+      display: grid; place-items: center;
+      font-weight: 900;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .ua-admin { background: linear-gradient(135deg, #2d1f5a, #4a2a7a); color: var(--purple); border: 1px solid #9c7cff44; }
+    .ua-user  { background: linear-gradient(135deg, #0a2038, #0f2d46); color: var(--cyan); border: 1px solid #55ddff33; }
+    .user-name { font-size: 12px; font-weight: 700; }
+    .user-email { font-size: 9px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Role pill ── */
+    .role-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+    .role-admin { background: #9c7cff18; border: 1px solid #9c7cff44; color: var(--purple); }
+    .role-user  { background: #45e0aa12; border: 1px solid #45e0aa44; color: var(--green); }
+
+    /* ── Risk pill ── */
+    .risk-pill { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 9px; font-weight: 800; }
+    .risk-high     { background: #ff657c18; border: 1px solid #ff657c44; color: var(--red); }
+    .risk-medium   { background: #ffc85718; border: 1px solid #ffc85744; color: var(--amber); }
+    .risk-low      { background: #45e0aa12; border: 1px solid #45e0aa44; color: var(--green); }
+    .risk-critical { background: #ff4a6b22; border: 1px solid #ff4a6b66; color: #ff8080; }
+
+    /* ── Score bar ── */
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+    .score-bar { flex: 1; height: 5px; border-radius: 99px; background: #152030; overflow: hidden; }
+    .score-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--cyan), var(--purple)); }
+    .score-num { font-size: 10px; font-weight: 700; color: #a8c4d8; min-width: 28px; text-align: right; }
+
+    /* ── Date cell ── */
+    .date-cell { font-size: 10px; color: var(--muted); white-space: nowrap; }
+    .date-cell b { display: block; color: #c8d8e8; font-weight: 600; }
+
+    /* ── Entities cell ── */
+    .entities-cell { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
+    .entity-tag {
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 9px;
+      background: #0f2035;
+      border: 1px solid #2b445f;
+      color: #9bbbd6;
+      white-space: nowrap;
+    }
+
+    /* ── Empty / loading ── */
+    .empty-row td { text-align: center; color: var(--muted); padding: 40px; font-size: 12px; }
+    .loading-row td { text-align: center; color: var(--cyan); padding: 30px; font-size: 12px; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 14px 18px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .tab-btn {
+      height: 36px;
+      padding: 0 16px;
+      border: 1px solid transparent;
+      border-bottom: 0;
+      border-radius: 8px 8px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, color .2s;
+    }
+    .tab-btn.active {
+      background: #0e1926;
+      border-color: var(--line);
+      border-bottom-color: #0e1926;
+      color: #fff;
+      position: relative;
+      bottom: -1px;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Notice bar ── */
+    .notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 18px;
+      border-top: 1px solid var(--line);
+      color: #71869a;
+      font-size: 10px;
+      background: #07101a;
+    }
+    .notice-icon { font-size: 14px; flex-shrink: 0; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 11px 16px;
+      border-radius: 10px;
+      background: #0d1f30;
+      border: 1px solid var(--line);
+      color: #edf6ff;
+      font-size: 12px;
+      box-shadow: 0 12px 35px #0009;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity .25s, transform .25s;
+      max-width: calc(100vw - 48px);
+    }
+    #toast.show { opacity: 1; transform: none; }
+
+    /* ── Action buttons in table ── */
+    .tbl-btn {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #0e1b2a;
+      color: #a8bfd2;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+      white-space: nowrap;
+    }
+    .tbl-btn:hover { border-color: var(--cyan); color: #fff; }
+    .tbl-btn-danger { border-color: #ff657c33; color: var(--red); }
+    .tbl-btn-danger:hover { border-color: var(--red); background: #ff657c12; color: #fff; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .shell { padding: 16px 12px 32px; }
+      .top-bar { padding: 0 14px; }
+      .top-bar-brand span { display: none; }
+      .top-bar-badge { display: none; }
+      .stats { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 24px; }
+      .page-header { gap: 12px; }
+      .page-header h1 { font-size: 18px; }
+      .search-bar { gap: 6px; }
+      .filter-select { min-width: 100px; }
+      .data-table { font-size: 11px; }
+      .data-table th, .data-table td { padding: 9px 10px; }
+    }
+    @media (max-width: 400px) {
+      .stats { grid-template-columns: 1fr; }
+      .top-bar-actions a { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Navigation Bar ── -->
+<header class="top-bar">
+  <div class="top-bar-brand">
+    <div class="top-bar-logo">⌁</div>
+    <div>
+      <strong>DarkTrace</strong>
+      <span>Threat Intelligence</span>
+    </div>
+    <div class="top-bar-badge">⬢ Admin Console</div>
+  </div>
+  <div class="top-bar-actions">
+    <a href="/" id="dashboardLink">◈ Dashboard</a>
+    <button id="logoutBtn" class="btn-danger">⏻ Logout</button>
+  </div>
+</header>
+
+<!-- ── Main Content ── -->
+<div class="shell">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Administrator Console</div>
+      <h1>User Management</h1>
+      <p>View registered accounts, roles, and investigation activity. Passwords are never exposed.</p>
+    </div>
+    <button class="refresh-btn" id="refreshBtn">
+      <span class="spin-icon" id="spinIcon">↻</span> Refresh
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Registered Users</div>
+      <div class="stat-value" id="statUsers">—</div>
+      <div class="stat-sub">Total accounts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Admin Accounts</div>
+      <div class="stat-value" id="statAdmins">—</div>
+      <div class="stat-sub">Privileged roles</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Investigations</div>
+      <div class="stat-value" id="statInvestigations">—</div>
+      <div class="stat-sub">Total runs</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Today</div>
+      <div class="stat-value" id="statActive">—</div>
+      <div class="stat-sub">Logins in 24h</div>
+    </div>
+  </div>
+
+  <!-- ── Users Panel ── -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>All Registered Users</h2>
+      </div>
+      <div class="panel-head-right">
+        <span class="badge badge-cyan" id="userCountBadge">0 users</span>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div style="padding:12px 16px; border-bottom:1px solid var(--line); display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="search-input-wrap" style="flex:1; min-width:160px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="userSearch" placeholder="Search username…" autocomplete="off">
+      </div>
+      <select class="filter-select" id="roleFilter">
+        <option value="">All roles</option>
+        <option value="admin">Admin</option>
+        <option value="user">User</option>
+      </select>
+    </div>
+
+    <div class="table-scroll">
+      <table class="data-table" id="userTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>User</th>
+            <th>Role</th>
+            <th>Registered</th>
+            <th>Last Login</th>
+            <th>Investigations</th>
+            <th>Last Run</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="userRows">
+          <tr class="loading-row"><td colspan="8">⏳ Loading users…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="notice">
+      <span class="notice-icon">🔒</span>
+      Password hashes are stored server-side and are never returned to this page.
+    </div>
+  </div>
+
+  <!-- ── Investigations Panel ── -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Recent Investigation Activity</h2>
+      </div>
+      <div class="panel-head-right">
+        <span class="badge badge-purple" id="invCountBadge">0 runs</span>
+      </div>
+    </div>
+
+    <!-- Search -->
+    <div style="padding:12px 16px; border-bottom:1px solid var(--line); display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="search-input-wrap" style="flex:1; min-width:160px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="invSearch" placeholder="Search user or entities…" autocomplete="off">
+      </div>
+      <select class="filter-select" id="riskFilter">
+        <option value="">All risks</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+    </div>
+
+    <div class="table-scroll">
+      <table class="data-table" id="invTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>User</th>
+            <th>Entities</th>
+            <th>Pairs</th>
+            <th>Avg Score</th>
+            <th>Risk</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="invRows">
+          <tr class="loading-row"><td colspan="7">⏳ Loading investigations…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- .shell -->
+
+<!-- Toast notification -->
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = v => v ? new Date(v).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+const fmtDate = v => v ? new Date(v).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+const fmtTime = v => v ? new Date(v).toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'}) : '';
+
+let allUsers = [], allInvestigations = [];
+
+function showToast(msg, ok=true) {
+  const t = $('toast');
+  t.textContent = (ok ? '✓ ' : '✗ ') + msg;
+  t.style.borderColor = ok ? '#45e0aa66' : '#ff657c66';
+  t.style.color = ok ? '#45e0aa' : '#ff657c';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function initials(name) {
+  return name.replace('@darktrace.in','').slice(0,2).toUpperCase();
+}
+
+function renderUsers(list) {
+  const tbody = $('userRows');
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">No users found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map((u, i) => `
+    <tr>
+      <td style="color:var(--muted);font-size:10px">${u.id}</td>
+      <td>
+        <div class="user-cell">
+          <div class="user-avatar ${u.role === 'admin' ? 'ua-admin' : 'ua-user'}">${initials(u.username)}</div>
+          <div>
+            <div class="user-name">${u.username.replace('@darktrace.in','')}</div>
+            <div class="user-email">${u.username}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="role-pill role-${u.role}">${u.role === 'admin' ? '⬢' : '◈'} ${u.role}</span></td>
+      <td>
+        <div class="date-cell">
+          <b>${fmtDate(u.created_at)}</b>
+          ${fmtTime(u.created_at)}
+        </div>
+      </td>
+      <td>
+        <div class="date-cell">
+          <b>${u.last_login ? fmtDate(u.last_login) : 'Never'}</b>
+          ${fmtTime(u.last_login)}
+        </div>
+      </td>
+      <td style="font-weight:700;color:${u.investigation_count > 0 ? 'var(--cyan)' : 'var(--muted)'}">
+        ${u.investigation_count}
+      </td>
+      <td>
+        <div class="date-cell">
+          <b>${u.last_investigation ? fmtDate(u.last_investigation) : '—'}</b>
+        </div>
+      </td>
+      <td>
+        <div style="display:flex;gap:5px">
+          ${u.role !== 'admin' ? `<button class="tbl-btn tbl-btn-danger" onclick="confirmDelete(${u.id},'${u.username}')">Delete</button>` : '<span style="color:var(--muted);font-size:10px">Protected</span>'}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderInvestigations(list) {
+  const tbody = $('invRows');
+  if (!list.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">No investigations found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(inv => {
+    const entities = Array.isArray(inv.entity_ids) ? inv.entity_ids : [inv.entity_ids];
+    const score = Math.round(inv.relationship_score);
+    const risk = (inv.risk_level || '').toLowerCase();
+    const shown = entities.slice(0, 3);
+    const extra = entities.length - 3;
+    return `
+      <tr>
+        <td style="color:var(--muted);font-size:10px">${inv.id}</td>
+        <td>
+          <div class="user-cell">
+            <div class="user-avatar ua-user">${initials(inv.username)}</div>
+            <div class="user-name">${inv.username.replace('@darktrace.in','')}</div>
+          </div>
+        </td>
+        <td>
+          <div class="entities-cell">
+            ${shown.map(e => `<span class="entity-tag">${e}</span>`).join('')}
+            ${extra > 0 ? `<span class="entity-tag">+${extra}</span>` : ''}
+          </div>
+        </td>
+        <td style="font-weight:700;color:var(--cyan)">${inv.pair_count}</td>
+        <td>
+          <div class="score-bar-wrap">
+            <div class="score-bar"><div class="score-bar-fill" style="width:${score}%"></div></div>
+            <div class="score-num">${score}%</div>
+          </div>
+        </td>
+        <td><span class="risk-pill risk-${risk}">${inv.risk_level || '—'}</span></td>
+        <td>
+          <div class="date-cell">
+            <b>${fmtDate(inv.created_at)}</b>
+            ${fmtTime(inv.created_at)}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterUsers() {
+  const q = $('userSearch').value.toLowerCase();
+  const role = $('roleFilter').value;
+  const filtered = allUsers.filter(u =>
+    (!q || u.username.toLowerCase().includes(q)) &&
+    (!role || u.role === role)
+  );
+  renderUsers(filtered);
+}
+
+function filterInvestigations() {
+  const q = $('invSearch').value.toLowerCase();
+  const risk = $('riskFilter').value.toLowerCase();
+  const filtered = allInvestigations.filter(inv => {
+    const entities = Array.isArray(inv.entity_ids) ? inv.entity_ids.join(' ') : String(inv.entity_ids);
+    return (!q || inv.username.toLowerCase().includes(q) || entities.toLowerCase().includes(q)) &&
+           (!risk || (inv.risk_level || '').toLowerCase() === risk);
+  });
+  renderInvestigations(filtered);
+}
+
+async function confirmDelete(userId, username) {
+  if (!confirm(`Delete user "${username}"?\nThis cannot be undone and will remove all their investigation records.`)) return;
+  try {
+    const r = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Delete failed');
+    showToast(`User ${username} deleted.`);
+    await load();
+  } catch(e) {
+    showToast(e.message, false);
+  }
+}
+
+async function load() {
+  const btn = $('refreshBtn');
+  const icon = $('spinIcon');
+  btn.disabled = true;
+  icon.style.animation = 'spin .7s linear infinite';
+
+  try {
+    const [ur, ir] = await Promise.all([
+      fetch('/api/admin/users'),
+      fetch('/api/admin/investigations')
+    ]);
+
+    if (ur.status === 401 || ur.status === 403) {
+      location.href = '/signin';
+      return;
+    }
+
+    const ud = await ur.json();
+    const id = await ir.json();
+
+    allUsers = ud.users || [];
+    allInvestigations = id.investigations || [];
+
+    // Stats
+    const admins = allUsers.filter(u => u.role === 'admin').length;
+    const today = new Date().toDateString();
+    const active = allUsers.filter(u => u.last_login && new Date(u.last_login).toDateString() === today).length;
+
+    $('statUsers').textContent = allUsers.length;
+    $('statAdmins').textContent = admins;
+    $('statInvestigations').textContent = allInvestigations.length;
+    $('statActive').textContent = active;
+
+    $('userCountBadge').textContent = `${allUsers.length} users`;
+    $('invCountBadge').textContent = `${allInvestigations.length} runs`;
+
+    filterUsers();
+    filterInvestigations();
+
+    showToast('Data refreshed successfully.');
+  } catch(e) {
+    showToast('Failed to load: ' + e.message, false);
+    $('userRows').innerHTML = `<tr class="empty-row"><td colspan="8" style="color:var(--red)">⚠ ${e.message}</td></tr>`;
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+// Wire up
+$('refreshBtn').onclick = load;
+$('userSearch').addEventListener('input', filterUsers);
+$('roleFilter').addEventListener('change', filterUsers);
+$('invSearch').addEventListener('input', filterInvestigations);
+$('riskFilter').addEventListener('change', filterInvestigations);
+$('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  location.href = '/signin';
+};
+
+// Load on page ready
+load();
+</script>
+</body>
+</html>
