@@ -67,7 +67,7 @@ AUTH_DB = _get_writable_path("darktrace_users.db")
 USERNAME_SUFFIX = "@darktrace.in"
 ADMIN_USERNAME = "admin@darktrace.in"
 # Admin credentials: username = admin  (suffix added automatically)  |  password = DarkTrace@Admin1
-ADMIN_PASSWORD_HASH = "scrypt:32768:8:1$eTt8Dmx9Dcz3EDqk$ba3f30cf90b6f32dd96db8b6f9b9767269c8fcd195118e8f7a7ef0989ddaacfd42c497dca9649921f974023fd26f65ceb78d42fca2abaf87c8cc92d93bc17d53"
+ADMIN_PASSWORD_HASH = "scrypt:32768:8:1$O9kuRPPsz5a2ftgF$ef481247cb82ef39430d161cdd3223016a433f7a1e318935ad1ed570016a1a623b3c8a9d0aefe4456649d51058058491139f85f9e6f6892b090780f282d48b75"
 
 app.secret_key = os.environ.get("DARKTRACE_SECRET_KEY") or "darktrace-local-development-secret-change-me"
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
@@ -115,11 +115,17 @@ def _auth_db():
             FOREIGN KEY(user_id) REFERENCES users(id)
         )
     """)
-    conn.execute(
-        "INSERT OR IGNORE INTO users (username, password_hash, role, created_at) VALUES (?, ?, 'admin', ?)",
-        (ADMIN_USERNAME, ADMIN_PASSWORD_HASH, time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
-    )
-    conn.execute("UPDATE users SET role='admin' WHERE username = ? COLLATE NOCASE", (ADMIN_USERNAME,))
+    admin_row = conn.execute("SELECT id FROM users WHERE username = ? COLLATE NOCASE", (ADMIN_USERNAME,)).fetchone()
+    if not admin_row:
+        conn.execute(
+            "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, 'admin', ?)",
+            (ADMIN_USERNAME, ADMIN_PASSWORD_HASH, time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+        )
+    else:
+        conn.execute(
+            "UPDATE users SET role='admin', password_hash=? WHERE username = ? COLLATE NOCASE",
+            (ADMIN_PASSWORD_HASH, ADMIN_USERNAME)
+        )
     conn.commit()
     return conn
 
