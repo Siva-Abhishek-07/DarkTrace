@@ -3,7 +3,7 @@
    Network-first strategy for HTML and API; cache fallback for offline.
    ============================================================ */
 
-const CACHE_NAME = 'darktrace-v3';
+const CACHE_NAME = 'darktrace-v4';
 
 // Assets to pre-cache on install
 const PRE_CACHE = [

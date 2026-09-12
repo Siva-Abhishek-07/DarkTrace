@@ -392,6 +392,15 @@
 
       document.body.classList.toggle('admin-mode', isAdmin);
 
+      // Manage username input requirement when hidden in admin mode
+      if (isAdmin) {
+        $('username').removeAttribute('required');
+        $('username').disabled = true;
+      } else {
+        $('username').setAttribute('required', '');
+        $('username').disabled = false;
+      }
+
       // Show/hide signup & forgot password options for users only
       $('createAccountTab').style.display = isAdmin ? 'none' : '';
       $('signup-link').style.display = isAdmin ? 'none' : '';
@@ -401,6 +410,7 @@
       // Clear fields on switch
       $('password').value = '';
       $('msg-login').textContent = '';
+      $('msg-login').className = 'message';
     }
 
     $('roleUser').addEventListener('click', () => setRole('user'));
