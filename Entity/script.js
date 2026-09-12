@@ -40,20 +40,55 @@ function getNotificationPrefs(){
 }
 function saveNotificationPrefs(p){localStorage.setItem(NOTIFICATION_PREFS_KEY,JSON.stringify(p))}
 
-function playNotificationSound(){
+function unlockAudioContext(){
+  try{
+    const C=window.AudioContext||window.webkitAudioContext;
+    if(!C)return;
+    if(!window.__darktraceAudio) window.__darktraceAudio=new C();
+    if(window.__darktraceAudio.state==="suspended") window.__darktraceAudio.resume();
+  }catch(e){}
+}
+document.addEventListener("pointerdown",unlockAudioContext);
+document.addEventListener("keydown",unlockAudioContext);
+
+function playNotificationSound(type="default"){
  const prefs=getNotificationPrefs(); if(prefs.muted)return;
  try{
    const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
    const ctx=window.__darktraceAudio||(window.__darktraceAudio=new C());
    if(ctx.state==="suspended")ctx.resume();
-   const now=ctx.currentTime, osc=ctx.createOscillator(), gain=ctx.createGain();
-   osc.type=prefs.sound==="chime"?"sine":"triangle";
-   osc.frequency.setValueAtTime(prefs.sound==="chime"?660:520,now);
-   osc.frequency.exponentialRampToValueAtTime(prefs.sound==="chime"?880:620,now+0.12);
-   gain.gain.setValueAtTime(0.0001,now);
-   gain.gain.exponentialRampToValueAtTime(0.055,now+0.015);
-   gain.gain.exponentialRampToValueAtTime(0.0001,now+0.24);
-   osc.connect(gain);gain.connect(ctx.destination);osc.start(now);osc.stop(now+0.26);
+   const now=ctx.currentTime;
+   
+   if(type==="threat"){
+     // High-priority cyber threat pulse (dual-frequency harmonic chime)
+     const osc1=ctx.createOscillator(), osc2=ctx.createOscillator(), gain=ctx.createGain();
+     osc1.type="sine"; osc2.type="triangle";
+     osc1.frequency.setValueAtTime(740, now);
+     osc1.frequency.exponentialRampToValueAtTime(980, now + 0.08);
+     osc1.frequency.exponentialRampToValueAtTime(880, now + 0.22);
+     
+     osc2.frequency.setValueAtTime(440, now);
+     osc2.frequency.exponentialRampToValueAtTime(587, now + 0.08);
+     osc2.frequency.exponentialRampToValueAtTime(520, now + 0.22);
+
+     gain.gain.setValueAtTime(0.0001, now);
+     gain.gain.exponentialRampToValueAtTime(0.22, now + 0.02);
+     gain.gain.exponentialRampToValueAtTime(0.14, now + 0.12);
+     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+
+     osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+     osc1.start(now); osc2.start(now);
+     osc1.stop(now + 0.40); osc2.stop(now + 0.40);
+   } else {
+     const osc=ctx.createOscillator(), gain=ctx.createGain();
+     osc.type=prefs.sound==="chime"?"sine":"triangle";
+     osc.frequency.setValueAtTime(prefs.sound==="chime"?660:520,now);
+     osc.frequency.exponentialRampToValueAtTime(prefs.sound==="chime"?880:620,now+0.12);
+     gain.gain.setValueAtTime(0.0001,now);
+     gain.gain.exponentialRampToValueAtTime(0.15,now+0.015);
+     gain.gain.exponentialRampToValueAtTime(0.0001,now+0.24);
+     osc.connect(gain);gain.connect(ctx.destination);osc.start(now);osc.stop(now+0.26);
+   }
  }catch(e){/* Sound is optional and must never break analysis. */}
 }
 
@@ -86,6 +121,7 @@ function markNotificationsRead(){
 function showHighScoreNotification(score,pairText){
  let n=$("highScoreNotification");
  if(!n)return;
+ playNotificationSound("threat");
  n.innerHTML=`<div class="notif-icon">⚠</div><div><b>High relationship score</b><span>${esc(pairText||"Strong relationship detected")} · ${Math.round(score)}%</span><small>Review the source-backed evidence before drawing conclusions.</small></div><button aria-label="Close">×</button>`;
  n.classList.remove("show");void n.offsetWidth;n.classList.add("show");
  n.querySelector("button").onclick=()=>n.classList.remove("show");
